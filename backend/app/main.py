@@ -34,15 +34,6 @@ async def lifespan(app: FastAPI):
     logger.info("Création des utilisateurs par défaut si nécessaire")
     await create_default_users()
     
-    # Traiter immédiatement les transcriptions en attente au démarrage (hors boucle event)
-    from .services.assemblyai import process_pending_transcriptions
-    logger.info("Traitement des transcriptions en attente au démarrage")
-    try:
-        # process_pending_transcriptions est async → on l'attend directement
-        await process_pending_transcriptions()
-    except Exception as e:
-        logger.error(f"Erreur lors du traitement initial des transcriptions: {e}")
-    
     # Démarrer le processeur de file d'attente
     await start_queue_processor()
     
