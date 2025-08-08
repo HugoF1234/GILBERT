@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
 from fastapi.security import OAuth2PasswordBearer
 from ..core.security import get_current_user, verify_password
-from ..db.database import get_user_by_id, update_user, get_password_hash
+from ..db.postgres_database import get_user_by_id, update_user, get_password_hash
 from ..models.user import User, UserUpdate, UserPasswordUpdate
 from ..services.file_upload import save_profile_picture, delete_profile_picture
 from typing import Optional
@@ -77,7 +77,7 @@ async def update_profile(
         return current_user
     
     # Mettre à jour l'utilisateur en base
-    updated_user = update_user(user_id, update_fields)
+    updated_user = await update_user(user_id, update_fields)
     
     if not updated_user:
         raise HTTPException(
@@ -110,7 +110,7 @@ async def upload_profile_picture(
         profile_picture_url = await save_profile_picture(file, user_id)
         
         # Mettre à jour l'utilisateur
-        updated_user = update_user(user_id, {"profile_picture_url": profile_picture_url})
+        updated_user = await update_user(user_id, {"profile_picture_url": profile_picture_url})
         
         if not updated_user:
             raise HTTPException(
@@ -171,7 +171,7 @@ async def change_password(
     hashed_password = get_password_hash(password_data.new_password)
     
     # Mettre à jour le mot de passe
-    updated_user = update_user(user_id, {"hashed_password": hashed_password})
+    updated_user = await update_user(user_id, {"hashed_password": hashed_password})
     
     if not updated_user:
         raise HTTPException(

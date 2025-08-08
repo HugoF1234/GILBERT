@@ -1,8 +1,7 @@
-from ..db.database import get_user_by_email_cached, create_user, get_password_hash
+from ..db.postgres_database import get_user_by_email, create_user, get_password_hash
 from loguru import logger
-import sqlite3
 
-def create_default_users():
+async def create_default_users():
     """
     Crée des utilisateurs par défaut si ils n'existent pas déjà dans la base de données.
     Cette fonction est appelée au démarrage de l'application.
@@ -36,7 +35,7 @@ def create_default_users():
     for user_data in default_users:
         try:
             # Vérifier si l'utilisateur existe déjà
-            existing_user = get_user_by_email_cached(user_data["email"])
+            existing_user = await get_user_by_email(user_data["email"])
             
             if not existing_user:
                 # Créer l'utilisateur
@@ -49,9 +48,9 @@ def create_default_users():
                 }
                 
                 try:
-                    new_user = create_user(user_dict)
+                    new_user = await create_user(user_dict)
                     logger.info(f"Utilisateur par défaut créé: {user_data['email']}")
-                except sqlite3.IntegrityError:
+                except Exception:
                     # Un autre worker a probablement créé l'utilisateur entre temps
                     logger.info(f"L'utilisateur {user_data['email']} a déjà été créé par un autre processus")
             else:

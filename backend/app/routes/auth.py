@@ -2,7 +2,7 @@ from datetime import timedelta, datetime
 from fastapi import APIRouter, Depends, HTTPException, Body, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
-from ..db.database import get_user_by_email_cached, create_user, get_password_hash, purge_old_entries_from_cache, get_user_by_oauth
+from ..db.postgres_database import get_user_by_email, create_user, get_password_hash, purge_old_entries_from_cache, get_user_by_oauth
 from ..models.user import UserCreate, User, UserCreateOAuth
 from ..core.security import create_access_token, verify_password, get_current_user, purge_password_cache
 from ..core.config import settings
@@ -56,7 +56,7 @@ async def register(user_data: UserCreate = Body(..., description="Informations d
     """
     try:
         # Vérifier si l'email est déjà utilisé
-        existing_user = get_user_by_email_cached(user_data.email)
+        existing_user = await get_user_by_email(user_data.email)
         if existing_user:
             raise HTTPException(status_code=400, detail="Email déjà utilisé")
             
@@ -69,12 +69,23 @@ async def register(user_data: UserCreate = Body(..., description="Informations d
             "full_name": user_data.full_name
         }
         
-        new_user = create_user(user_dict)
+        new_user = await create_user(user_dict)
+        
+        # Générer un token JWT pour l'utilisateur nouvellement créé
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(new_user["id"])},
+            expires_delta=access_token_expires
+        )
         
         return {
             "message": "Utilisateur créé avec succès",
-            "user": new_user
+            "user": new_user,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         }
+        
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -106,7 +117,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """
     try:
         # Recherche de l'utilisateur par email
-        user = get_user_by_email_cached(form_data.username)
+        user = await get_user_by_email(form_data.username)
         if not user:
             raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
             
@@ -125,11 +136,6 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         purge_old_entries_from_cache()
         purge_password_cache()
         
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # Conversion en secondes
-        }
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -164,7 +170,7 @@ async def login_json(login_data: LoginRequest):
     """
     try:
         # Recherche de l'utilisateur par email
-        user = get_user_by_email_cached(login_data.email)
+        user = await get_user_by_email(login_data.email)
         if not user:
             raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
             
@@ -183,11 +189,6 @@ async def login_json(login_data: LoginRequest):
         purge_old_entries_from_cache()
         purge_password_cache()
         
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # Conversion en secondes
-        }
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -242,11 +243,6 @@ async def refresh_token(current_user: dict = Depends(get_current_user)):
             expires_delta=access_token_expires
         )
         
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # Conversion en secondes
-        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors du rafraîchissement du token: {str(e)}")
 
@@ -358,7 +354,7 @@ async def google_callback(request: Request, code: Optional[str] = None, state: O
         logger.info(f"Informations utilisateur Google récupérées pour: {google_user.get('email', 'email_unknown')}")
         
         # Vérifier si l'utilisateur existe déjà par OAuth
-        existing_user = get_user_by_oauth("google", google_user["id"])
+        existing_user = await get_user_by_oauth("google", google_user["id"])
         
         if existing_user:
             # Utilisateur existant, créer un token JWT
@@ -366,7 +362,7 @@ async def google_callback(request: Request, code: Optional[str] = None, state: O
             logger.info(f"Utilisateur OAuth existant trouvé: {user.get('email', 'email_unknown')}")
         else:
             # Vérifier si un utilisateur avec cet email existe déjà (compte classique)
-            existing_email_user = get_user_by_email_cached(google_user["email"])
+            existing_email_user = await get_user_by_email(google_user["email"])
             
             if existing_email_user and not existing_email_user.get("oauth_provider"):
                 logger.warning(f"Email déjà utilisé avec compte classique: {google_user['email']}")
@@ -385,7 +381,7 @@ async def google_callback(request: Request, code: Optional[str] = None, state: O
                 "oauth_id": google_user["id"]
             }
             
-            user = create_user(user_data)
+            user = await create_user(user_data)
             logger.info(f"Nouvel utilisateur OAuth créé: {user.get('email', 'email_unknown')}")
         
         # Créer le token JWT
