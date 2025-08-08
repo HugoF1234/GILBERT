@@ -38,7 +38,8 @@ async def lifespan(app: FastAPI):
     from .services.assemblyai import process_pending_transcriptions
     logger.info("Traitement des transcriptions en attente au démarrage")
     try:
-        await asyncio.get_running_loop().run_in_executor(None, process_pending_transcriptions)
+        # process_pending_transcriptions est async → on l'attend directement
+        await process_pending_transcriptions()
     except Exception as e:
         logger.error(f"Erreur lors du traitement initial des transcriptions: {e}")
     
