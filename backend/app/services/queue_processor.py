@@ -47,8 +47,9 @@ class QueueProcessor:
             await asyncio.to_thread(self._process_queue)
             
             # Vérifier les transcriptions en cours au démarrage
-            logger.info("Vérification des transcriptions en cours au démarrage")
-            await asyncio.to_thread(self._check_pending_transcriptions)
+            # Désactivé temporairement: vérification des transcriptions en cours au démarrage
+            # logger.info("Vérification des transcriptions en cours au démarrage")
+            # await asyncio.to_thread(self._check_pending_transcriptions)
     
     async def stop(self):
         """Arrête le processeur de file d'attente"""
@@ -74,9 +75,9 @@ class QueueProcessor:
                 logger.info("Traitement périodique de la file d'attente de transcription")
                 self._process_queue()
                 
-                # Vérifier les transcriptions en cours à chaque itération (toutes les 10 secondes)
-                logger.info("Vérification périodique des transcriptions en cours")
-                self._check_pending_transcriptions()
+                # Désactivé temporairement: vérification périodique des transcriptions en cours
+                # logger.info("Vérification périodique des transcriptions en cours")
+                # self._check_pending_transcriptions()
             except Exception as e:
                 logger.error(f"Erreur lors du traitement de la file d'attente: {str(e)}")
                 import traceback
@@ -159,22 +160,8 @@ class QueueProcessor:
                 logger.error(traceback.format_exc())
     
     def _check_pending_transcriptions(self):
-        """Vérifie et met à jour les transcriptions en cours"""
-        try:
-            logger.info("Vérification des transcriptions en cours")
-            from .assemblyai import process_pending_transcriptions
-            
-            # Utiliser un thread séparé pour ne pas bloquer la boucle principale
-            thread = threading.Thread(
-                target=process_pending_transcriptions
-            )
-            thread.daemon = True
-            thread.start()
-            logger.info("Thread de vérification des transcriptions lancé")
-        except Exception as e:
-            logger.error(f"Erreur lors de la vérification des transcriptions en cours: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
+        """Désactivé temporairement pour stabilité de production"""
+        logger.info("Vérification des transcriptions désactivée temporairement")
     
     def process_transcription_wrapper(self, meeting_id, file_url, user_id, queue_file_path):
         """Wrapper pour process_transcription qui supprime le fichier de queue à la fin"""
