@@ -11,6 +11,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from .services.queue_processor import start_queue_processor, stop_queue_processor
+import asyncio
 
 # Configuration du logging
 logging.basicConfig(
@@ -33,10 +34,13 @@ async def lifespan(app: FastAPI):
     logger.info("Création des utilisateurs par défaut si nécessaire")
     await create_default_users()
     
-    # Traiter immédiatement les transcriptions en attente au démarrage
+    # Traiter immédiatement les transcriptions en attente au démarrage (hors boucle event)
     from .services.assemblyai import process_pending_transcriptions
     logger.info("Traitement des transcriptions en attente au démarrage")
-    process_pending_transcriptions()
+    try:
+        await asyncio.get_running_loop().run_in_executor(None, process_pending_transcriptions)
+    except Exception as e:
+        logger.error(f"Erreur lors du traitement initial des transcriptions: {e}")
     
     # Démarrer le processeur de file d'attente
     await start_queue_processor()
