@@ -1,8 +1,10 @@
 #!/bin/bash
+set -e
+
 echo "🚀 Démarrage de l'API Gilbert..."
 
 echo "⏳ Attente de PostgreSQL..."
-while ! pg_isready -h postgres -p 5432 -U gilbert_user >/dev/null 2>&1; do
+until pg_isready -h postgres -p 5432 -U gilbert_user >/dev/null 2>&1; do
   echo "PostgreSQL n'est pas encore prêt. Attente..."
   sleep 2
 done
