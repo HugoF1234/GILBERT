@@ -26,7 +26,7 @@ def normalize_transcript_format(text: Optional[str]) -> Optional[str]:
     return re.sub(pattern, replacement, text)
 
 
-async def _create_meeting_async(meeting_data: Dict[str, Any], user_id: str) -> Optional[Dict[str, Any]]:
+async def create_meeting_async(meeting_data: Dict[str, Any], user_id: str) -> Optional[Dict[str, Any]]:
     async with get_db_connection() as conn:
         meeting_id = str(uuid.uuid4())
         created_at = datetime.utcnow()
@@ -51,10 +51,10 @@ async def _create_meeting_async(meeting_data: Dict[str, Any], user_id: str) -> O
 
 
 def create_meeting(meeting_data: Dict[str, Any], user_id: str) -> Optional[Dict[str, Any]]:
-    return _run(_create_meeting_async(meeting_data, user_id))
+    return _run(create_meeting_async(meeting_data, user_id))
 
 
-async def _get_meeting_async(meeting_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+async def get_meeting_async(meeting_id: str, user_id: str) -> Optional[Dict[str, Any]]:
     async with get_db_connection() as conn:
         row = await conn.fetchrow(
             "SELECT * FROM meetings WHERE id = $1 AND user_id = $2",
@@ -75,10 +75,10 @@ async def _get_meeting_async(meeting_id: str, user_id: str) -> Optional[Dict[str
 
 
 def get_meeting(meeting_id: str, user_id: str) -> Optional[Dict[str, Any]]:
-    return _run(_get_meeting_async(meeting_id, user_id))
+    return _run(get_meeting_async(meeting_id, user_id))
 
 
-async def _get_meetings_by_user_async(user_id: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
+async def get_meetings_by_user_async(user_id: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
     async with get_db_connection() as conn:
         if status:
             rows = await conn.fetch(
@@ -109,10 +109,10 @@ async def _get_meetings_by_user_async(user_id: str, status: Optional[str] = None
 
 
 def get_meetings_by_user(user_id: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
-    return _run(_get_meetings_by_user_async(user_id, status))
+    return _run(get_meetings_by_user_async(user_id, status))
 
 
-async def _update_meeting_async(meeting_id: str, user_id: str, update_data: Dict[str, Any]) -> bool:
+async def update_meeting_async(meeting_id: str, user_id: str, update_data: Dict[str, Any]) -> bool:
     if not update_data:
         return False
     # normalize transcript text if present
@@ -136,10 +136,10 @@ async def _update_meeting_async(meeting_id: str, user_id: str, update_data: Dict
 
 
 def update_meeting(meeting_id: str, user_id: str, update_data: Dict[str, Any]) -> bool:
-    return _run(_update_meeting_async(meeting_id, user_id, update_data))
+    return _run(update_meeting_async(meeting_id, user_id, update_data))
 
 
-async def _delete_meeting_async(meeting_id: str, user_id: str) -> Optional[str]:
+async def delete_meeting_async(meeting_id: str, user_id: str) -> Optional[str]:
     async with get_db_connection() as conn:
         row = await conn.fetchrow(
             "SELECT file_url FROM meetings WHERE id = $1 AND user_id = $2",
@@ -155,10 +155,10 @@ async def _delete_meeting_async(meeting_id: str, user_id: str) -> Optional[str]:
 
 
 def delete_meeting(meeting_id: str, user_id: str) -> Optional[str]:
-    return _run(_delete_meeting_async(meeting_id, user_id))
+    return _run(delete_meeting_async(meeting_id, user_id))
 
 
-async def _get_meeting_speakers_async(meeting_id: str, user_id: str) -> Optional[List[Dict[str, Any]]]:
+async def get_meeting_speakers_async(meeting_id: str, user_id: str) -> Optional[List[Dict[str, Any]]]:
     async with get_db_connection() as conn:
         # verify meeting ownership
         m = await conn.fetchrow(
@@ -175,10 +175,10 @@ async def _get_meeting_speakers_async(meeting_id: str, user_id: str) -> Optional
 
 
 def get_meeting_speakers(meeting_id: str, user_id: str) -> Optional[List[Dict[str, Any]]]:
-    return _run(_get_meeting_speakers_async(meeting_id, user_id))
+    return _run(get_meeting_speakers_async(meeting_id, user_id))
 
 
-async def _get_pending_transcriptions_async(max_age_hours: int = 24) -> List[Dict[str, Any]]:
+async def get_pending_transcriptions_async(max_age_hours: int = 24) -> List[Dict[str, Any]]:
     threshold = datetime.utcnow() - timedelta(hours=max_age_hours)
     async with get_db_connection() as conn:
         rows = await conn.fetch(
@@ -189,10 +189,10 @@ async def _get_pending_transcriptions_async(max_age_hours: int = 24) -> List[Dic
 
 
 def get_pending_transcriptions(max_age_hours: int = 24) -> List[Dict[str, Any]]:
-    return _run(_get_pending_transcriptions_async(max_age_hours))
+    return _run(get_pending_transcriptions_async(max_age_hours))
 
 
-async def _get_meetings_by_status_async(status: str, max_age_hours: int = 72) -> List[Dict[str, Any]]:
+async def get_meetings_by_status_async(status: str, max_age_hours: int = 72) -> List[Dict[str, Any]]:
     threshold = datetime.utcnow() - timedelta(hours=max_age_hours)
     async with get_db_connection() as conn:
         rows = await conn.fetch(
@@ -207,10 +207,10 @@ async def _get_meetings_by_status_async(status: str, max_age_hours: int = 72) ->
 
 
 def get_meetings_by_status(status: str, max_age_hours: int = 72) -> List[Dict[str, Any]]:
-    return _run(_get_meetings_by_status_async(status, max_age_hours))
+    return _run(get_meetings_by_status_async(status, max_age_hours))
 
 
-async def _set_meeting_speaker_async(meeting_id: str, user_id: str, speaker_id: str, custom_name: str) -> bool:
+async def set_meeting_speaker_async(meeting_id: str, user_id: str, speaker_id: str, custom_name: str) -> bool:
     async with get_db_connection() as conn:
         # ensure meeting ownership
         m = await conn.fetchrow(
@@ -238,10 +238,10 @@ async def _set_meeting_speaker_async(meeting_id: str, user_id: str, speaker_id: 
 
 
 def set_meeting_speaker(meeting_id: str, user_id: str, speaker_id: str, custom_name: str) -> bool:
-    return _run(_set_meeting_speaker_async(meeting_id, user_id, speaker_id, custom_name))
+    return _run(set_meeting_speaker_async(meeting_id, user_id, speaker_id, custom_name))
 
 
-async def _delete_meeting_speaker_async(meeting_id: str, user_id: str, speaker_id: str) -> bool:
+async def delete_meeting_speaker_async(meeting_id: str, user_id: str, speaker_id: str) -> bool:
     async with get_db_connection() as conn:
         # verify meeting ownership
         m = await conn.fetchrow(
@@ -258,10 +258,10 @@ async def _delete_meeting_speaker_async(meeting_id: str, user_id: str, speaker_i
 
 
 def delete_meeting_speaker(meeting_id: str, user_id: str, speaker_id: str) -> bool:
-    return _run(_delete_meeting_speaker_async(meeting_id, user_id, speaker_id))
+    return _run(delete_meeting_speaker_async(meeting_id, user_id, speaker_id))
 
 
-async def _validate_meeting_ids_async(meeting_ids: List[str], user_id: str) -> List[str]:
+async def validate_meeting_ids_async(meeting_ids: List[str], user_id: str) -> List[str]:
     async with get_db_connection() as conn:
         rows = await conn.fetch(
             "SELECT id FROM meetings WHERE id = ANY($1::uuid[]) AND user_id = $2",
@@ -271,6 +271,6 @@ async def _validate_meeting_ids_async(meeting_ids: List[str], user_id: str) -> L
 
 
 def validate_meeting_ids(meeting_ids: List[str], user_id: str) -> List[str]:
-    return _run(_validate_meeting_ids_async(meeting_ids, user_id))
+    return _run(validate_meeting_ids_async(meeting_ids, user_id))
 
 
