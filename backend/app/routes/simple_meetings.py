@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query, 
 from fastapi.logger import logger
 from typing import Optional, Dict, Any, List
 import asyncio
+import asyncio
 import os
 from datetime import datetime
 import logging
@@ -14,11 +15,13 @@ import traceback
 from ..core.security import get_current_user
 from ..services.assemblyai import transcribe_meeting
 from ..db.postgres_meetings import (
-    get_meeting,
-    get_meetings_by_user,
-    update_meeting,
-    delete_meeting,
-    create_meeting,
+    # Versions asynchrones pour éviter les conflits d'event loop
+    create_meeting_async,
+    get_meeting_async,
+    get_meetings_by_user_async,
+    update_meeting_async,
+    delete_meeting_async,
+    get_meeting_speakers_async,
 )
 from ..core.config import settings
 from ..services.transcription_checker import check_and_update_transcription
