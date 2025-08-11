@@ -5,6 +5,7 @@ Routes simplifiées pour la gestion des réunions
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query, Path
 from fastapi.logger import logger
 from typing import Optional, Dict, Any, List
+import asyncio
 import os
 from datetime import datetime
 import logging
@@ -69,7 +70,8 @@ async def upload_meeting(
             "transcript_status": "processing",  # Commencer directement en processing au lieu de pending
             "success": True  # Ajouter un indicateur de succès pour la cohérence avec les autres endpoints
         }
-        meeting = create_meeting(meeting_data, current_user["id"])
+        # Exécuter l'appel sync dans un thread pour éviter les conflits d'event loop
+        meeting = await asyncio.to_thread(create_meeting, meeting_data, current_user["id"])
         logger.info(f"Réunion créée avec le statut 'processing': {meeting['id']}")
         
         # 3. Lancer la transcription en arrière-plan
@@ -200,14 +202,14 @@ async def list_meetings(
     Retourne une liste de réunions avec leurs métadonnées.
     """
     # Récupérer les réunions de l'utilisateur
-    meetings = get_meetings_by_user(current_user["id"], status)
+    meetings = await asyncio.to_thread(get_meetings_by_user, current_user["id"], status)
     
     # Vérifier automatiquement le statut des transcriptions en cours
     updated_meetings = []
     for meeting in meetings:
         if meeting.get("transcript_status") == "processing":
             logger.info(f"Vérification automatique du statut de la transcription pour la réunion {meeting.get('id')}")
-            meeting = check_and_update_transcription(meeting)
+            meeting = await asyncio.to_thread(check_and_update_transcription, meeting)
         updated_meetings.append(meeting)
     
     # Filtrer par statut si spécifié
@@ -233,7 +235,7 @@ async def get_meeting_details(
         logger.info(f"Tentative de récupération des détails de la réunion {meeting_id} par l'utilisateur {current_user['id']}")
         
         # Récupérer les détails de la réunion
-        meeting = get_meeting(meeting_id, current_user["id"])
+        meeting = await asyncio.to_thread(get_meeting, meeting_id, current_user["id"])
         
         if not meeting:
             logger.warning(f"Réunion {meeting_id} non trouvée pour l'utilisateur {current_user['id']}")
@@ -254,11 +256,11 @@ async def get_meeting_details(
         # Appliquer les noms personnalisés des speakers à la transcription si elle est complétée
         if meeting.get("transcript_status") == "completed" and meeting.get("transcript_id"):
             try:
-                from ..db.postgres_meetings import get_meeting_speakers
                 from ..services.transcription_checker import get_assemblyai_transcript_details, format_transcript_text
                 
                 logger.info(f"Application des noms personnalisés à la transcription pour la réunion {meeting_id}")
-                speakers_data = get_meeting_speakers(meeting_id, current_user["id"])
+                from ..db.postgres_meetings import get_meeting_speakers
+                speakers_data = await asyncio.to_thread(get_meeting_speakers, meeting_id, current_user["id"]) or []
                 
                 # S'il existe des speakers personnalisés, formater la transcription avec ces noms
                 if speakers_data and any(speaker.get("custom_name") for speaker in speakers_data):
