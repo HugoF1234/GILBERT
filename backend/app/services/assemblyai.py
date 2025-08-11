@@ -532,6 +532,7 @@ async def process_pending_transcriptions():
     """
     import requests
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     from ..db.postgres_meetings import (
         get_pending_transcriptions_async,
         get_meetings_by_status_async,
@@ -539,6 +540,9 @@ async def process_pending_transcriptions():
         update_meeting_async,
         get_meeting_speakers_async,
     )
+=======
+    from ..db.postgres_meetings import get_pending_transcriptions, get_meetings_by_status, get_meeting
+>>>>>>> Stashed changes
 =======
     from ..db.postgres_meetings import get_pending_transcriptions, get_meetings_by_status, get_meeting
 >>>>>>> Stashed changes
