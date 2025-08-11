@@ -141,7 +141,13 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         # Purger les caches périodiquement pour éviter les fuites mémoire
         purge_old_entries_from_cache()
         purge_password_cache()
-        
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        }
+
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -194,7 +200,13 @@ async def login_json(login_data: LoginRequest):
         # Purger les caches périodiquement pour éviter les fuites mémoire
         purge_old_entries_from_cache()
         purge_password_cache()
-        
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        }
+
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -249,6 +261,11 @@ async def refresh_token(current_user: dict = Depends(get_current_user)):
             expires_delta=access_token_expires
         )
         
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors du rafraîchissement du token: {str(e)}")
 
@@ -400,6 +417,13 @@ async def google_callback(request: Request, code: Optional[str] = None, state: O
         # Purger les caches
         purge_old_entries_from_cache()
         purge_password_cache()
+
+        # Créer un token de référence pour l'utilisateur
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        }
         
         logger.info(f"Token JWT créé avec succès pour l'utilisateur: {user.get('email', 'email_unknown')}")
         
