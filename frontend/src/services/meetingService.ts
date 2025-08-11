@@ -268,10 +268,10 @@ export async function getTranscriptionWithDiarization(meetingId: string): Promis
   try {
     console.log(`Fetching transcription with diarization for meeting ID: ${meetingId}`);
     
-    // Utiliser l'endpoint direct qui retourne la transcription avec diarization
+    // Utiliser le nouvel endpoint simplifié de détails réunion (inclut les champs de transcription)
     const response = await apiClient.get<any>(
-      `/${meetingId}`,
-      true  // withAuth = true
+      `/simple/meetings/${meetingId}`,
+      true
     );
     
     console.log(`Got transcription with diarization for meeting ID ${meetingId}`);
@@ -289,10 +289,10 @@ export async function getTranscript(meetingId: string): Promise<TranscriptRespon
   try {
     console.log(`Getting transcript for meeting ${meetingId}`);
     
-    // Récupérer directement la transcription depuis l'API
+    // Récupérer les détails de la réunion via l'endpoint simplifié (contient la transcription)
     const response = await apiClient.get<any>(
-      `/${meetingId}`,
-      true  // withAuth = true
+      `/simple/meetings/${meetingId}`,
+      true
     );
     
     console.log(`Got transcript for meeting ID ${meetingId}`);
