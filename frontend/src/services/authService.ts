@@ -1,5 +1,4 @@
 import apiClient from './apiClient';
-import config from '../config/environment';
 
 export interface User {
   id: string;
@@ -8,9 +7,10 @@ export interface User {
 }
 
 export interface RegisterParams {
-  username: string;
+  email: string;
   password: string;
-  name: string;
+  full_name?: string;
+  name?: string; // compat UI
 }
 
 export interface LoginParams {
@@ -28,9 +28,16 @@ export interface AuthResponse {
  * Register a new user
  */
 export async function registerUser(params: RegisterParams): Promise<AuthResponse> {
+  // Adapter explicitement la charge utile attendue par le backend
+  const payload = {
+    email: params.email,
+    password: params.password,
+    full_name: params.full_name || params.name || ''
+  };
+
   const response = await apiClient.post<AuthResponse>(
     '/auth/register', 
-    params, 
+    payload, 
     false, 
     false
   );
@@ -38,6 +45,10 @@ export async function registerUser(params: RegisterParams): Promise<AuthResponse
   // Store the token
   if (response.access_token) {
     localStorage.setItem('auth_token', response.access_token);
+    // Nettoyer le cache des meetings après inscription
+    try {
+      localStorage.removeItem('meeting-transcriber-meetings-cache');
+    } catch {}
   }
   
   return response;
@@ -61,6 +72,10 @@ export async function loginUser(params: LoginParams): Promise<AuthResponse> {
     // Store the token
     if (response.access_token) {
       localStorage.setItem('auth_token', response.access_token);
+      // Nettoyer le cache des meetings après connexion (pour éviter les meetings d'un autre utilisateur)
+      try {
+        localStorage.removeItem('meeting-transcriber-meetings-cache');
+      } catch {}
     }
     
     return response;
@@ -89,6 +104,10 @@ export async function getUserProfile(): Promise<User> {
  */
 export function logoutUser(): void {
   localStorage.removeItem('auth_token');
+  // Purger le cache des meetings au logout
+  try {
+    localStorage.removeItem('meeting-transcriber-meetings-cache');
+  } catch {}
 }
 
 /**
