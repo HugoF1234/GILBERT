@@ -523,7 +523,7 @@ def normalize_transcript_format(text):
     # Sinon, on le considère comme un texte brut d'un seul locuteur
     return f"Speaker A: {text}"
 
-def process_pending_transcriptions():
+async def process_pending_transcriptions():
     """
     Vérifie et met à jour les statuts des transcriptions en attente ou bloquées en état 'processing'.
     À exécuter au démarrage de l'application et périodiquement.
@@ -531,7 +531,13 @@ def process_pending_transcriptions():
     Cette fonction utilise l'API REST d'AssemblyAI pour être plus fiable.
     """
     import requests
-    from ..db.postgres_meetings import get_pending_transcriptions, get_meetings_by_status, get_meeting
+    from ..db.postgres_meetings import (
+        get_pending_transcriptions_async,
+        get_meetings_by_status_async,
+        get_meeting_async,
+        update_meeting_async,
+        get_meeting_speakers_async,
+    )
     from ..core.config import settings
     
     # Utiliser directement la clé API AssemblyAI définie en haut du fichier
@@ -547,11 +553,11 @@ def process_pending_transcriptions():
     }
     
     # Récupérer toutes les transcriptions en attente
-    pending_meetings = get_pending_transcriptions()
+    pending_meetings = await get_pending_transcriptions_async()
     logger.info(f"Transcriptions en attente: {len(pending_meetings)}")
     
     # Récupérer également les transcriptions bloquées en état 'processing'
-    processing_meetings = get_meetings_by_status('processing')
+    processing_meetings = await get_meetings_by_status_async('processing')
     logger.info(f"Transcriptions bloquées en état 'processing': {len(processing_meetings)}")
     
     # Fusionner les deux listes
@@ -707,7 +713,7 @@ def process_pending_transcriptions():
             
             # Si on arrive ici et que la réunion est toujours en état 'processing',
             # vérifier directement auprès d'AssemblyAI si la transcription est terminée
-            meeting = get_meeting(meeting_id, user_id)  # Récupérer l'état actuel
+            meeting = await get_meeting_async(meeting_id, user_id)  # Récupérer l'état actuel
             if meeting and meeting.get('transcript_status') == 'processing' and meeting.get('transcript_id'):
                 transcript_id = meeting.get('transcript_id')
                 logger.info(f"Vérification du statut de la transcription {transcript_id} pour la réunion {meeting_id}")
@@ -735,7 +741,7 @@ def process_pending_transcriptions():
                                     # Récupérer les noms personnalisés des locuteurs s'ils existent
                                     speaker_names = {}
                                     try:
-                                        speakers_data = get_meeting_speakers(meeting_id, user_id)
+                                        speakers_data = await get_meeting_speakers_async(meeting_id, user_id)
                                         if speakers_data:
                                             for speaker in speakers_data:
                                                 speaker_names[speaker['speaker_id']] = speaker['custom_name']
@@ -792,7 +798,7 @@ def process_pending_transcriptions():
                                 "speakers_count": speakers_count
                             }
                             
-                            update_meeting(meeting_id, user_id, update_data)
+                            await update_meeting_async(meeting_id, user_id, update_data)
                             logger.info(f"Réunion {meeting_id} mise à jour avec succès (statut: completed)")
                         elif status == 'error':
                             # Mettre à jour la base de données en cas d'erreur
@@ -802,7 +808,7 @@ def process_pending_transcriptions():
                                 "transcript_text": f"Erreur lors de la transcription: {error_message}"
                             }
                             
-                            update_meeting(meeting_id, user_id, update_data)
+                            await update_meeting_async(meeting_id, user_id, update_data)
                             logger.info(f"Réunion {meeting_id} mise à jour avec succès (statut: error)")
                         else:
                             logger.info(f"Réunion {meeting_id} toujours en cours de traitement (statut: {status})")
