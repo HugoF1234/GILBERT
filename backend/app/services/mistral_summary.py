@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from typing import Optional, Dict, Any
+import asyncio
 from ..core.config import settings
 import requests
 
@@ -269,5 +270,60 @@ def process_meeting_summary(meeting_id: str, user_id: str, client_id: Optional[s
         try:
             update_meeting(meeting_id, user_id, {"summary_status": "error"})
         except:
+            pass
+        return False
+
+
+async def process_meeting_summary_async(meeting_id: str, user_id: str, client_id: Optional[str] = None) -> bool:
+    """
+    Version asynchrone sûre pour l'event loop principale: utilise les fonctions DB async
+    et exécute l'appel bloquant à l'API Mistral dans un thread.
+    """
+    from ..db.postgres_meetings import get_meeting_async, update_meeting_async, get_meeting_speakers_async
+    from ..services.transcription_checker import replace_speaker_names_in_text
+    try:
+        meeting = await get_meeting_async(meeting_id, user_id)
+        if not meeting:
+            logger.error(f"Réunion {meeting_id} non trouvée pour l'utilisateur {user_id}")
+            return False
+
+        transcript_text = meeting.get("transcript_text")
+        if not transcript_text:
+            logger.error(f"Aucune transcription disponible pour la réunion {meeting_id}")
+            return False
+
+        speakers_data = await get_meeting_speakers_async(meeting_id, user_id)
+        speaker_names: Dict[str, str] = {}
+        if speakers_data:
+            for speaker in speakers_data:
+                speaker_names[speaker['speaker_id']] = speaker['custom_name']
+
+        formatted_transcript = replace_speaker_names_in_text(transcript_text, speaker_names) if speaker_names else transcript_text
+
+        await update_meeting_async(meeting_id, user_id, {"summary_status": "processing"})
+
+        # Appel Mistral (bloquant) déporté dans un thread
+        summary_text = await asyncio.to_thread(
+            generate_meeting_summary,
+            formatted_transcript,
+            meeting.get("title", "Réunion"),
+            client_id,
+            user_id,
+        )
+
+        if summary_text:
+            await update_meeting_async(meeting_id, user_id, {
+                "summary_text": summary_text,
+                "summary_status": "completed",
+            })
+            return True
+        else:
+            await update_meeting_async(meeting_id, user_id, {"summary_status": "error"})
+            return False
+    except Exception as e:
+        logger.error(f"[async] Erreur lors du traitement du compte rendu pour {meeting_id}: {e}")
+        try:
+            await update_meeting_async(meeting_id, user_id, {"summary_status": "error"})
+        except Exception:
             pass
         return False
