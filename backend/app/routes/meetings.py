@@ -13,6 +13,9 @@ from ..db.postgres_meetings import (
     update_meeting,
     delete_meeting,
     get_meeting_speakers,
+    # async variants
+    get_meeting_async,
+    update_meeting_async,
 )
 from datetime import datetime
 from typing import List, Optional
@@ -21,6 +24,7 @@ import tempfile
 import traceback
 import subprocess
 import threading
+import asyncio
 from ..services.transcription_checker import get_assemblyai_transcript_details, format_transcript_text
 
 router = APIRouter(prefix="/meetings", tags=["Réunions"])
@@ -315,8 +319,8 @@ async def generate_meeting_summary_route(
     Cette route déclenche la génération d'un compte rendu de réunion à partir
     de la transcription existante. La génération s'effectue de manière asynchrone.
     """
-    # Vérifier que la réunion existe
-    meeting = get_meeting(meeting_id, current_user["id"])
+    # Vérifier que la réunion existe (async pour éviter les conflits d'event loop)
+    meeting = await get_meeting_async(meeting_id, current_user["id"])
     
     if not meeting:
         raise HTTPException(
@@ -340,26 +344,16 @@ async def generate_meeting_summary_route(
                 "type": "TRANSCRIPTION_NOT_COMPLETED"
             }
         )
-    
-    # Lancer le processus de génération du compte rendu en mode synchrone
-    success = process_meeting_summary(meeting_id, current_user["id"])
-    
-    if success:
-        # Récupérer la réunion mise à jour
-        updated_meeting = get_meeting(meeting_id, current_user["id"])
-        
-        return {
-            "message": "Compte rendu généré avec succès",
-            "meeting": updated_meeting
-        }
-    else:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "message": "Erreur lors de la génération du compte rendu",
-                "type": "SUMMARY_GENERATION_ERROR"
-            }
-        )
+
+    # Mettre le statut en processing et lancer en arrière-plan pour éviter les conflits d'event loop
+    await update_meeting_async(meeting_id, current_user["id"], {"summary_status": "processing"})
+
+    # Lancer le traitement dans un thread pour ne pas bloquer la boucle async
+    asyncio.create_task(asyncio.to_thread(process_meeting_summary, meeting_id, current_user["id"]))
+
+    # Retourner immédiatement
+    updated = await get_meeting_async(meeting_id, current_user["id"]) or {"id": meeting_id}
+    return {"message": "Génération du compte rendu démarrée", "meeting": updated}
 
 @router.post("/{meeting_id}/summary", response_model=dict)
 async def generate_meeting_summary_alias(
@@ -383,8 +377,8 @@ async def get_meeting_summary(
     
     Retourne le compte rendu de la réunion et son statut.
     """
-    # Vérifier que la réunion existe
-    meeting = get_meeting(meeting_id, current_user["id"])
+    # Vérifier que la réunion existe (async)
+    meeting = await get_meeting_async(meeting_id, current_user["id"])
     
     if not meeting:
         raise HTTPException(
