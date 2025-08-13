@@ -465,53 +465,11 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
         return;
       }
       
-      // Essayer les deux endpoints possibles pour voir lequel fonctionne
+      // Toujours utiliser l'endpoint simplifié pour éviter les erreurs 500 sur /meetings/{id}
       let response: any;
-      let endpoint;
-      let error404 = false;
-      
-      // Premier essai: utiliser l'endpoint direct
-      try {
-        endpoint = `/meetings/${meetingId}`;
-        console.log(`=== TENTATIVE 1: ${API_BASE_URL}${endpoint} ===`);
-        
-        response = await apiClient.get(endpoint);
-        console.log('Response from first endpoint:', {
-          status: response?.status,
-          statusText: response?.statusText,
-          dataKeys: response?.data ? Object.keys(response.data) : 'No data'
-        });
-        
-        if (response && response.status === 404) {
-          error404 = true;
-          console.log('Endpoint returned 404, will try alternative endpoint');
-        }
-      } catch (error: any) {
-        console.error('Error from first endpoint:', error);
-        if (error.response && error.response.status === 404) {
-          error404 = true;
-          console.log('Endpoint returned 404 error, will try alternative endpoint');
-        } else {
-          throw error;
-        }
-      }
-      
-      // Deuxième essai si le premier a échoué avec 404: utiliser l'endpoint alternatif
-      if (error404 || !response || !response.data) {
-        endpoint = `/simple/meetings/${meetingId}`;
-        console.log(`=== TENTATIVE 2: ${API_BASE_URL}${endpoint} ===`);
-        try {
-          response = await apiClient.get(endpoint);
-          console.log('Response from second endpoint:', {
-            status: response?.status,
-            statusText: response?.statusText,
-            dataKeys: response?.data ? Object.keys(response.data) : 'No data'
-          });
-        } catch (error: any) {
-          console.error('Error from second endpoint:', error);
-          throw error;
-        }
-      }
+      const endpoint = `/simple/meetings/${meetingId}`;
+      console.log(`=== FETCH: ${API_BASE_URL}${endpoint} ===`);
+      response = await apiClient.get(endpoint);
       
       // Traitement de la réponse
       console.log('=== TRAITEMENT DE LA REPONSE ===');
@@ -900,20 +858,15 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
   };
 
   // Fonction pour afficher le compte rendu sans le régénérer
-  const handleViewSummary = (meetingId: string) => {
-    // Trouver la réunion concernée
-    const meeting = meetings.find(m => m.id === meetingId);
-    if (!meeting) {
-      showErrorPopup('Erreur', 'Réunion non trouvée');
-      return;
+  const handleViewSummary = async (meetingId: string) => {
+    try {
+      // Récupérer la version la plus récente de la réunion avant d'afficher
+      const updated = await getMeetingDetails(meetingId);
+      setMeetings(prev => prev.map(m => (m.id === meetingId ? { ...m, ...updated } : m)));
+    } catch (e) {
+      console.warn('Could not refresh meeting before opening summary:', e);
     }
-    
-    if (!meeting.summary_text && meeting.summary_status !== 'completed') {
-      showErrorPopup('Erreur', 'Le compte rendu n\'est pas disponible');
-      return;
-    }
-    
-    // Ouvrir le dialogue du résumé
+    // Ouvrir le dialogue du résumé quoi qu'il arrive; le renderer gère l'absence de texte
     console.log('Opening summary dialog for meeting:', meetingId);
     setViewingSummaryId(meetingId);
   };
