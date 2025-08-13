@@ -1,7 +1,7 @@
 from datetime import timedelta, datetime
 from fastapi import APIRouter, Depends, HTTPException, Body, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from ..db.postgres_database import (
     get_user_by_email,
     create_user,
@@ -418,21 +418,95 @@ async def google_callback(request: Request, code: Optional[str] = None, state: O
         purge_old_entries_from_cache()
         purge_password_cache()
 
-        # Créer un token de référence pour l'utilisateur
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-        }
-        
         logger.info(f"Token JWT créé avec succès pour l'utilisateur: {user.get('email', 'email_unknown')}")
         
-        # Rediriger vers le frontend avec le token
+        # Rediriger vers le frontend avec le token JWT dans l'URL
         return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&success=true", status_code=302)
         
     except Exception as e:
         logger.error(f"Erreur dans le callback OAuth: {str(e)}")
         return RedirectResponse(url=f"{frontend_url}?error=server_error", status_code=302)
+
+@router.post("/google/callback", tags=["Authentication"])  # JSON flow for SPA callback
+async def google_callback_json(payload: GoogleCallbackRequest):
+    """
+    Échange le code Google contre un JWT de notre API et le retourne en JSON.
+    """
+    try:
+        code = payload.code
+        state = payload.state
+
+        if not oauth_state_manager.validate_state(state):
+            raise HTTPException(status_code=400, detail="invalid_state")
+
+        token_data = {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": GOOGLE_REDIRECT_URI,
+        }
+
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data=token_data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=20.0,
+            )
+            if token_response.status_code != 200:
+                raise HTTPException(status_code=400, detail="token_exchange_failed")
+
+            tokens = token_response.json()
+            google_access_token = tokens.get("access_token")
+
+            user_response = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {google_access_token}"},
+                timeout=20.0,
+            )
+            if user_response.status_code != 200:
+                raise HTTPException(status_code=400, detail="user_info_failed")
+
+            google_user = user_response.json()
+
+        existing_user = await get_user_by_oauth("google", google_user["id"]) 
+        if not existing_user:
+            existing_email_user = await get_user_by_email(google_user["email"])
+            if existing_email_user and not existing_email_user.get("oauth_provider"):
+                raise HTTPException(status_code=400, detail="email_already_exists")
+            elif existing_email_user:
+                raise HTTPException(status_code=400, detail="email_exists_other_provider")
+
+            user_data = {
+                "email": google_user["email"],
+                "full_name": google_user.get("name", ""),
+                "profile_picture_url": google_user.get("picture", ""),
+                "oauth_provider": "google",
+                "oauth_id": google_user["id"],
+            }
+            user = await create_user(user_data)
+        else:
+            user = existing_user
+
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        jwt_token = create_access_token(data={"sub": user["id"]}, expires_delta=access_token_expires)
+
+        purge_old_entries_from_cache()
+        purge_password_cache()
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "access_token": jwt_token,
+                "token_type": "bearer",
+                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/google/login", tags=["Authentication"])
 async def google_login():
