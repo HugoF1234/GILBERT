@@ -361,6 +361,16 @@ async def generate_meeting_summary_route(
             }
         )
 
+@router.post("/{meeting_id}/summary", response_model=dict)
+async def generate_meeting_summary_alias(
+    meeting_id: str = Path(..., description="ID unique de la réunion"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Alias: permet aussi POST /meetings/{meeting_id}/summary pour lancer la génération.
+    """
+    return await generate_meeting_summary_route(meeting_id, current_user)
+
 @router.get("/{meeting_id}/summary", response_model=dict)
 async def get_meeting_summary(
     meeting_id: str = Path(..., description="ID unique de la réunion"),
