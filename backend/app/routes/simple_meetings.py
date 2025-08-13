@@ -99,6 +99,52 @@ async def upload_meeting(
 
 # La vérification périodique est gérée par une tâche dédiée au sein de l'API
 
+@router.post("/{meeting_id}/transcribe", response_model=dict)
+async def simple_transcribe_meeting(
+    meeting_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        meeting = await get_meeting_async(meeting_id, current_user["id"])
+        if not meeting:
+            raise HTTPException(status_code=404, detail="Meeting not found")
+
+        file_url = meeting.get("file_url")
+        if not file_url:
+            await update_meeting_async(meeting_id, current_user["id"], {
+                "transcript_status": "error",
+                "transcript_text": "Aucun fichier associé à cette réunion"
+            })
+            return await get_meeting_async(meeting_id, current_user["id"])
+
+        tid = await asyncio.to_thread(transcribe_meeting, meeting_id, file_url, current_user["id"])  
+        if tid:
+            await update_meeting_async(meeting_id, current_user["id"], {
+                "transcript_id": tid,
+                "transcript_status": "processing",
+                "transcript_text": f"Transcription en cours avec ID: {tid}"
+            })
+        else:
+            await update_meeting_async(meeting_id, current_user["id"], {
+                "transcript_status": "error",
+                "transcript_text": "Échec du démarrage de la transcription (voir logs)."
+            })
+
+        return await get_meeting_async(meeting_id, current_user["id"])
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur lors du démarrage de la transcription: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erreur lors du démarrage de la transcription")
+
+@router.post("/{meeting_id}/retry-transcription", response_model=dict)
+async def simple_retry_transcription(
+    meeting_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    return await simple_transcribe_meeting(meeting_id, current_user)
+
 @router.get("/", response_model=list)
 async def list_meetings(
     status: Optional[str] = Query(None, description="Filtrer par statut de transcription"),
