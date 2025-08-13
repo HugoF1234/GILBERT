@@ -5,7 +5,7 @@ from ..models.user import User
 from ..models.meeting import Meeting, MeetingCreate, MeetingUpdate
 from ..db.firebase import upload_mp3
 from ..services.assemblyai import transcribe_meeting, convert_to_wav, check_transcription_status, process_transcription
-from ..services.mistral_summary import process_meeting_summary
+from ..services.mistral_summary import process_meeting_summary, process_meeting_summary_async
 from ..db.postgres_meetings import (
     create_meeting,
     get_meeting,
@@ -345,11 +345,9 @@ async def generate_meeting_summary_route(
             }
         )
 
-    # Mettre le statut en processing et lancer en arrière-plan pour éviter les conflits d'event loop
+    # Mettre le statut en processing et lancer en arrière-plan (version 100% async-safe)
     await update_meeting_async(meeting_id, current_user["id"], {"summary_status": "processing"})
-
-    # Lancer le traitement dans un thread pour ne pas bloquer la boucle async
-    asyncio.create_task(asyncio.to_thread(process_meeting_summary, meeting_id, current_user["id"]))
+    asyncio.create_task(process_meeting_summary_async(meeting_id, current_user["id"]))
 
     # Retourner immédiatement
     updated = await get_meeting_async(meeting_id, current_user["id"]) or {"id": meeting_id}
