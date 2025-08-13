@@ -6,8 +6,8 @@ from ..core.config import settings
 import requests
 
 # Configuration pour Mistral AI
-# Utiliser directement la clé API fournie au lieu de passer par settings
-MISTRAL_API_KEY = "40zsZTwSIFoAISjk1POC3rZ09GfF6WDH"
+# Lire la clé via les settings/env
+MISTRAL_API_KEY = settings.MISTRAL_API_KEY
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
 # Configuration du logging
