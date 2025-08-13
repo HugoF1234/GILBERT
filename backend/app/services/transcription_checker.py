@@ -1,12 +1,13 @@
 import requests
 import logging
 from typing import Dict, Any, Optional
+from ..core.config import settings
 
 # Configuration du logging
 logger = logging.getLogger("transcription-checker")
 
 # Clé API AssemblyAI
-ASSEMBLYAI_API_KEY = "3419005ee6924e08a14235043cabcd4e"
+ASSEMBLYAI_API_KEY = settings.ASSEMBLYAI_API_KEY
 
 def check_and_update_transcription(meeting: Dict[str, Any]) -> Dict[str, Any]:
     """
