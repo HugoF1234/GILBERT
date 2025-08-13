@@ -13,7 +13,7 @@ import logging
 import traceback
 
 from ..core.security import get_current_user
-from ..services.assemblyai import transcribe_meeting
+from ..services.assemblyai import transcribe_meeting, check_transcription_status
 from ..db.postgres_meetings import (
     create_meeting_async,
     get_meeting_async,
@@ -190,7 +190,30 @@ async def get_meeting_details(
                 "success": False
             }
         
-        # La mise à jour de statut est faite par la tâche périodique
+        # Si la transcription est en cours et qu'on a un transcript_id, vérifier immédiatement auprès d'AssemblyAI
+        if meeting.get("transcript_status") == "processing" and meeting.get("transcript_id"):
+            try:
+                tid = meeting.get("transcript_id")
+                status_data = await asyncio.to_thread(check_transcription_status, tid)
+                if isinstance(status_data, dict) and status_data.get("status") == "completed":
+                    transcript_text = status_data.get("text", "")
+                    audio_duration = int(status_data.get("audio_duration", 0) or 0)
+                    speakers_count = 1
+                    if status_data.get("utterances"):
+                        speakers_set = set()
+                        for u in status_data.get("utterances", []) or []:
+                            speakers_set.add(u.get("speaker", "Unknown"))
+                        speakers_count = len(speakers_set) or 1
+                    await update_meeting_async(meeting_id, current_user["id"], {
+                        "transcript_status": "completed",
+                        "transcript_text": transcript_text,
+                        "duration_seconds": audio_duration,
+                        "speakers_count": speakers_count,
+                    })
+                    # Rafraîchir l'objet meeting après update
+                    meeting = await get_meeting_async(meeting_id, current_user["id"]) 
+            except Exception as _e:
+                logger.warning(f"Vérification immédiate AssemblyAI échouée pour {meeting_id}: {_e}")
         
         # Appliquer les noms personnalisés des speakers à la transcription si elle est complétée
         if meeting.get("transcript_status") == "completed" and meeting.get("transcript_id"):
