@@ -240,6 +240,24 @@ async def get_meeting_details(
             except Exception as e:
                 logger.error(f"Erreur lors de l'application des noms personnalisés: {str(e)}")
         
+        # Déclenchement auto du résumé si la transcription est terminée mais aucun résumé présent
+        try:
+            should_start_summary = (
+                meeting.get("transcript_status") == "completed"
+                and not meeting.get("summary_text")
+                and (meeting.get("summary_status") in (None, "not_generated", "error") )
+            )
+            if should_start_summary:
+                from ..services.mistral_summary import process_meeting_summary_async
+                logger.info(f"Déclenchement automatique du résumé pour {meeting_id}")
+                # Marquer en processing et lancer en arrière-plan
+                await update_meeting_async(meeting_id, current_user["id"], {"summary_status": "processing"})
+                asyncio.create_task(process_meeting_summary_async(meeting_id, current_user["id"]))
+                # Rafraîchir l'objet meeting pour refléter le nouveau statut
+                meeting = await get_meeting_async(meeting_id, current_user["id"]) 
+        except Exception as e:
+            logger.warning(f"Échec du déclenchement auto du résumé pour {meeting_id}: {e}")
+        
         # Ajouter des informations supplémentaires pour faciliter le débogage côté frontend
         meeting["status"] = "success"
         meeting["success"] = True
