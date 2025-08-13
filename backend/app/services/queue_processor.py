@@ -74,10 +74,8 @@ class QueueProcessor:
             try:
                 logger.info("Traitement périodique de la file d'attente de transcription")
                 self._process_queue()
-                
-                # Désactivé temporairement: vérification périodique des transcriptions en cours
-                # logger.info("Vérification périodique des transcriptions en cours")
-                # self._check_pending_transcriptions()
+                # Vérification périodique des transcriptions en cours
+                self._check_pending_transcriptions()
             except Exception as e:
                 logger.error(f"Erreur lors du traitement de la file d'attente: {str(e)}")
                 import traceback
@@ -160,8 +158,37 @@ class QueueProcessor:
                 logger.error(traceback.format_exc())
     
     def _check_pending_transcriptions(self):
-        """Désactivé temporairement pour stabilité de production"""
-        logger.info("Vérification des transcriptions désactivée temporairement")
+        """Vérifie périodiquement les transcriptions avec transcript_id et met à jour si terminé."""
+        try:
+            from .assemblyai import check_transcription_status
+            from ..db.postgres_meetings import get_meetings_by_status, update_meeting
+            processing = get_meetings_by_status('processing')
+            if not processing:
+                return
+            logger.info(f"Contrôle périodique: {len(processing)} réunion(s) en processing")
+            for m in processing:
+                tid = m.get('transcript_id')
+                if not tid:
+                    continue
+                try:
+                    data = check_transcription_status(tid)
+                    if isinstance(data, dict) and data.get('status') == 'completed':
+                        text = data.get('text', '')
+                        duration = int(data.get('audio_duration', 0) or 0)
+                        speakers_count = 1
+                        if data.get('utterances'):
+                            speakers = {u.get('speaker', 'Unknown') for u in data.get('utterances', [])}
+                            speakers_count = len(speakers) or 1
+                        update_meeting(m['id'], m['user_id'], {
+                            'transcript_status': 'completed',
+                            'transcript_text': text,
+                            'duration_seconds': duration,
+                            'speakers_count': speakers_count,
+                        })
+                except Exception as e:
+                    logger.warning(f"Contrôle statut transcript_id={tid} échoué: {e}")
+        except Exception as e:
+            logger.error(f"_check_pending_transcriptions error: {e}")
     
     def process_transcription_wrapper(self, meeting_id, file_url, user_id, queue_file_path):
         """Wrapper pour process_transcription qui supprime le fichier de queue à la fin"""
