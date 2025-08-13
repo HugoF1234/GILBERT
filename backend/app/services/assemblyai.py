@@ -15,8 +15,8 @@ from ..core.config import settings
 from ..db.postgres_meetings import update_meeting, get_meeting, get_meeting_speakers, normalize_transcript_format
 
 # Configuration pour AssemblyAI
-# Utiliser directement la clé API fournie au lieu de passer par settings
-ASSEMBLY_AI_API_KEY = "3419005ee6924e08a14235043cabcd4e"
+# Lire la clé via les settings (env)
+ASSEMBLY_AI_API_KEY = settings.ASSEMBLYAI_API_KEY
 # URL de base de l'API AssemblyAI
 ASSEMBLY_AI_BASE_URL = "https://api.assemblyai.com/v2"
 
@@ -80,26 +80,11 @@ def transcribe_meeting(meeting_id: str, file_url: str, user_id: str) -> Optional
         Optional[str]: ID de la transcription si la transcription a été lancée avec succès, None sinon
     """
     try:
-        # Vérifier si le meeting existe toujours avant de lancer la transcription
-        meeting = get_meeting(meeting_id, user_id)
-        if not meeting:
-            logger.error(f"Tentative de transcription d'une réunion qui n'existe pas ou plus: {meeting_id}")
-            return None
-            
         # Vérifier si le fichier existe avant de lancer la transcription
         file_path = file_url.lstrip('/')
         if not os.path.exists(file_path):
             logger.error(f"Fichier audio introuvable pour la transcription: {file_path}")
-            # Mettre à jour le statut en "error"
-            update_meeting(meeting_id, user_id, {
-                "transcript_status": "error",
-                "transcript_text": "Le fichier audio est introuvable."
-            })
             return None
-        
-        # Mettre à jour le statut immédiatement à "processing" au lieu de "pending"
-        update_meeting(meeting_id, user_id, {"transcript_status": "processing"})
-        logger.info(f"Statut de la réunion {meeting_id} mis à jour à 'processing'")
         
         # Uploader le fichier vers AssemblyAI
         upload_url = upload_file_to_assemblyai(file_path)
@@ -109,22 +94,12 @@ def transcribe_meeting(meeting_id: str, file_url: str, user_id: str) -> Optional
         transcript_id = start_transcription(upload_url)
         logger.info(f"Transcription démarrée avec l'ID: {transcript_id}")
         
-        # Mettre à jour l'ID de transcription dans la base de données
-        update_meeting(meeting_id, user_id, {"transcript_id": transcript_id})
-        
         return transcript_id
         
     except Exception as e:
         logger.error(f"Erreur lors de la mise en file d'attente pour transcription: {str(e)}")
         logger.error(traceback.format_exc())
-        # Mettre à jour le statut en "error"
-        try:
-            update_meeting(meeting_id, user_id, {
-                "transcript_status": "error", 
-                "transcript_text": f"Erreur lors de la mise en file d'attente pour transcription: {str(e)}"
-            })
-        except Exception as db_error:
-            logger.error(f"Erreur lors de la mise à jour de la base de données: {str(db_error)}")
+        return None
 
 # Note: La fonction transcribe_simple qui utilisait le SDK AssemblyAI a été supprimée
 # Elle a été remplacée par les fonctions upload_file_to_assemblyai et start_transcription
@@ -319,7 +294,7 @@ def start_transcription(audio_url: str, speakers_expected: Optional[int] = None,
             json=json_data
         )
         
-        if response.status_code == 200:
+        if response.status_code in (200, 201):
             transcript_id = response.json()["id"]
             logger.info(f"Transcription démarrée avec succès, ID: {transcript_id}")
             return transcript_id
