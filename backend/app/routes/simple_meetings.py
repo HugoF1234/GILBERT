@@ -15,7 +15,6 @@ import traceback
 from ..core.security import get_current_user
 from ..services.assemblyai import transcribe_meeting
 from ..db.postgres_meetings import (
-    # Versions asynchrones pour éviter les conflits d'event loop
     create_meeting_async,
     get_meeting_async,
     get_meetings_by_user_async,
@@ -24,7 +23,7 @@ from ..db.postgres_meetings import (
     get_meeting_speakers_async,
 )
 from ..core.config import settings
-from ..services.transcription_checker import check_and_update_transcription
+# On s'appuie sur la tâche périodique interne pour les mises à jour de statut
 
 # Configuration du logging
 logger = logging.getLogger("meeting-transcriber")
@@ -73,28 +72,21 @@ async def upload_meeting(
             "transcript_status": "processing",  # Commencer directement en processing au lieu de pending
             "success": True  # Ajouter un indicateur de succès pour la cohérence avec les autres endpoints
         }
-        # Exécuter l'appel sync dans un thread pour éviter les conflits d'event loop
-        meeting = await asyncio.to_thread(create_meeting, meeting_data, current_user["id"])
+        meeting = await create_meeting_async(meeting_data, current_user["id"])  # async direct
         logger.info(f"Réunion créée avec le statut 'processing': {meeting['id']}")
         
-        # 3. Lancer la transcription en arrière-plan
-        transcript_id = transcribe_meeting(meeting["id"], file_url, current_user["id"])
+        # 3. Lancer la transcription en arrière-plan (appel bloquant déporté en thread)
+        transcript_id = await asyncio.to_thread(transcribe_meeting, meeting["id"], file_url, current_user["id"]) 
         logger.info(f"Transcription lancée pour la réunion {meeting['id']} avec l'ID de transcription {transcript_id}")
         
-        # 4. Démarrer un thread pour vérifier périodiquement le statut de la transcription
+        # 4. Enregistrer l'ID de transcription ou marquer l'erreur
         if transcript_id:
-            # Mettre à jour l'ID de transcription dans la base de données
-            update_meeting(meeting["id"], current_user["id"], {"transcript_id": transcript_id})
-            
-            # Lancer un thread pour vérifier périodiquement le statut
-            import threading
-            check_thread = threading.Thread(
-                target=periodic_transcription_check,
-                args=(meeting["id"], transcript_id, current_user["id"])
-            )
-            check_thread.daemon = True  # Le thread s'arrêtera quand le programme principal s'arrête
-            check_thread.start()
-            logger.info(f"Thread de vérification périodique lancé pour la transcription {transcript_id}")
+            await update_meeting_async(meeting["id"], current_user["id"], {"transcript_id": transcript_id})
+        else:
+            await update_meeting_async(meeting["id"], current_user["id"], {
+                "transcript_status": "error",
+                "transcript_text": "Échec du démarrage de la transcription (voir logs)."
+            })
         
         return meeting
     
@@ -105,92 +97,7 @@ async def upload_meeting(
             detail=f"Une erreur s'est produite lors de l'upload: {str(e)}"
         )
 
-def periodic_transcription_check(meeting_id: str, transcript_id: str, user_id: str, max_checks: int = 20, interval_seconds: int = 30):
-    """
-    Vérifie périodiquement le statut d'une transcription et met à jour la base de données.
-    
-    Args:
-        meeting_id: ID de la réunion
-        transcript_id: ID de la transcription AssemblyAI
-        user_id: ID de l'utilisateur
-        max_checks: Nombre maximum de vérifications à effectuer
-        interval_seconds: Intervalle entre les vérifications en secondes
-    """
-    import time
-    from ..services.assemblyai import get_transcript_status
-    from ..db.postgres_meetings import get_meeting, update_meeting
-    
-    logger.info(f"Démarrage de la vérification périodique pour la transcription {transcript_id}")
-    
-    for i in range(max_checks):
-        # Attendre l'intervalle spécifié
-        time.sleep(interval_seconds)
-        
-        # Vérifier si la réunion existe toujours
-        meeting = get_meeting(meeting_id, user_id)
-        if not meeting:
-            logger.warning(f"Réunion {meeting_id} non trouvée, arrêt des vérifications")
-            break
-        
-        # Vérifier si la transcription est déjà terminée ou en erreur
-        current_status = meeting.get("transcript_status")
-        if current_status in ["completed", "error"]:
-            logger.info(f"Transcription {transcript_id} déjà en état {current_status}, arrêt des vérifications")
-            break
-        
-        # Vérifier le statut auprès d'AssemblyAI
-        logger.info(f"Vérification {i+1}/{max_checks} du statut de la transcription {transcript_id}")
-        try:
-            status, transcript_data = get_transcript_status(transcript_id)
-            logger.info(f"Statut actuel de la transcription {transcript_id}: {status}")
-            
-            if status == "completed":
-                # Extraire le texte et les métadonnées
-                transcript_text = transcript_data.get("text", "")
-                
-                # Formater avec les locuteurs si disponibles
-                if "utterances" in transcript_data and transcript_data["utterances"]:
-                    try:
-                        from ..services.transcription_checker import format_transcript_text
-                        transcript_text = format_transcript_text(transcript_data)
-                        
-                        # Calculer le nombre de locuteurs
-                        speakers_set = set()
-                        for utterance in transcript_data.get("utterances", []):
-                            speakers_set.add(utterance.get("speaker", "Unknown"))
-                        
-                        speakers_count = len(speakers_set) if speakers_set else 1
-                    except Exception as e:
-                        logger.error(f"Erreur lors du formatage du texte: {str(e)}")
-                        speakers_count = 1
-                else:
-                    speakers_count = 1
-                
-                # Mettre à jour la base de données
-                update_data = {
-                    "transcript_status": "completed",
-                    "transcript_text": transcript_text,
-                    "duration_seconds": int(transcript_data.get("audio_duration", 0)),
-                    "speakers_count": speakers_count
-                }
-                update_meeting(meeting_id, user_id, update_data)
-                logger.info(f"Transcription {transcript_id} terminée, base de données mise à jour")
-                break
-            
-            elif status == "error":
-                # Mettre à jour la base de données avec l'erreur
-                error_message = transcript_data.get("error", "Unknown error")
-                update_meeting(meeting_id, user_id, {
-                    "transcript_status": "error",
-                    "transcript_text": f"Erreur lors de la transcription: {error_message}"
-                })
-                logger.error(f"Erreur de transcription pour {transcript_id}: {error_message}")
-                break
-        
-        except Exception as e:
-            logger.error(f"Erreur lors de la vérification de la transcription {transcript_id}: {str(e)}")
-    
-    logger.info(f"Fin des vérifications périodiques pour la transcription {transcript_id}")
+# La vérification périodique est gérée par une tâche dédiée au sein de l'API
 
 @router.get("/", response_model=list)
 async def list_meetings(
@@ -204,22 +111,8 @@ async def list_meetings(
     
     Retourne une liste de réunions avec leurs métadonnées.
     """
-    # Récupérer les réunions de l'utilisateur
-    meetings = await asyncio.to_thread(get_meetings_by_user, current_user["id"], status)
-    
-    # Vérifier automatiquement le statut des transcriptions en cours
-    updated_meetings = []
-    for meeting in meetings:
-        if meeting.get("transcript_status") == "processing":
-            logger.info(f"Vérification automatique du statut de la transcription pour la réunion {meeting.get('id')}")
-            meeting = await asyncio.to_thread(check_and_update_transcription, meeting)
-        updated_meetings.append(meeting)
-    
-    # Filtrer par statut si spécifié
-    if status:
-        updated_meetings = [m for m in updated_meetings if m.get("transcript_status") == status]
-    
-    return updated_meetings
+    meetings = await get_meetings_by_user_async(current_user["id"], status)
+    return meetings
 
 @router.get("/{meeting_id}", response_model=dict)
 async def get_meeting_details(
@@ -238,7 +131,7 @@ async def get_meeting_details(
         logger.info(f"Tentative de récupération des détails de la réunion {meeting_id} par l'utilisateur {current_user['id']}")
         
         # Récupérer les détails de la réunion
-        meeting = await asyncio.to_thread(get_meeting, meeting_id, current_user["id"])
+        meeting = await get_meeting_async(meeting_id, current_user["id"]) 
         
         if not meeting:
             logger.warning(f"Réunion {meeting_id} non trouvée pour l'utilisateur {current_user['id']}")
@@ -251,10 +144,7 @@ async def get_meeting_details(
                 "success": False
             }
         
-        # Vérifier automatiquement le statut de la transcription si elle est en cours
-        if meeting.get("transcript_status") == "processing":
-            logger.info(f"Vérification automatique du statut de la transcription pour la réunion {meeting_id}")
-            meeting = check_and_update_transcription(meeting)
+        # La mise à jour de statut est faite par la tâche périodique
         
         # Appliquer les noms personnalisés des speakers à la transcription si elle est complétée
         if meeting.get("transcript_status") == "completed" and meeting.get("transcript_id"):
@@ -263,12 +153,12 @@ async def get_meeting_details(
                 
                 logger.info(f"Application des noms personnalisés à la transcription pour la réunion {meeting_id}")
                 from ..db.postgres_meetings import get_meeting_speakers
-                speakers_data = await asyncio.to_thread(get_meeting_speakers, meeting_id, current_user["id"]) or []
+                speakers_data = await get_meeting_speakers_async(meeting_id, current_user["id"]) or []
                 
                 # S'il existe des speakers personnalisés, formater la transcription avec ces noms
                 if speakers_data and any(speaker.get("custom_name") for speaker in speakers_data):
                     transcript_id = meeting.get("transcript_id")
-                    transcript_data = get_assemblyai_transcript_details(transcript_id)
+                    transcript_data = await asyncio.to_thread(get_assemblyai_transcript_details, transcript_id)
                     
                     if transcript_data:
                         speaker_names = {speaker["speaker_id"]: speaker["custom_name"] for speaker in speakers_data if speaker.get("custom_name")}
@@ -315,7 +205,7 @@ async def delete_simple_meeting(
         logger.info(f"Tentative de suppression de la réunion {meeting_id} par l'utilisateur {current_user['id']}")
         
         # Récupérer la réunion pour vérifier qu'elle existe et appartient à l'utilisateur
-        meeting = get_meeting(meeting_id, current_user["id"])
+        meeting = await get_meeting_async(meeting_id, current_user["id"]) 
         
         if not meeting:
             logger.warning(f"Réunion {meeting_id} non trouvée pour l'utilisateur {current_user['id']}")
@@ -327,7 +217,7 @@ async def delete_simple_meeting(
             }
         
         # Supprimer la réunion de la base de données
-        result = delete_meeting(meeting_id, current_user["id"])
+        result = await delete_meeting_async(meeting_id, current_user["id"]) 
         
         if not result:
             logger.error(f"Échec de la suppression de la réunion {meeting_id}")
