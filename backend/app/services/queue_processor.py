@@ -75,7 +75,7 @@ class QueueProcessor:
                 logger.info("Traitement périodique de la file d'attente de transcription")
                 self._process_queue()
                 # Vérification périodique des transcriptions en cours
-                self._check_pending_transcriptions()
+                await self._check_pending_transcriptions()
             except Exception as e:
                 logger.error(f"Erreur lors du traitement de la file d'attente: {str(e)}")
                 import traceback
@@ -157,12 +157,12 @@ class QueueProcessor:
                 import traceback
                 logger.error(traceback.format_exc())
     
-    def _check_pending_transcriptions(self):
-        """Vérifie périodiquement les transcriptions avec transcript_id et met à jour si terminé."""
+    async def _check_pending_transcriptions(self):
+        """Vérifie périodiquement les transcriptions avec transcript_id et met à jour si terminé (async)."""
         try:
             from .assemblyai import check_transcription_status
-            from ..db.postgres_meetings import get_meetings_by_status, update_meeting
-            processing = get_meetings_by_status('processing')
+            from ..db.postgres_meetings import get_meetings_by_status_async, update_meeting_async
+            processing = await get_meetings_by_status_async('processing')
             if not processing:
                 return
             logger.info(f"Contrôle périodique: {len(processing)} réunion(s) en processing")
@@ -171,7 +171,7 @@ class QueueProcessor:
                 if not tid:
                     continue
                 try:
-                    data = check_transcription_status(tid)
+                    data = await asyncio.to_thread(check_transcription_status, tid)
                     if isinstance(data, dict) and data.get('status') == 'completed':
                         text = data.get('text', '')
                         duration = int(data.get('audio_duration', 0) or 0)
@@ -179,7 +179,7 @@ class QueueProcessor:
                         if data.get('utterances'):
                             speakers = {u.get('speaker', 'Unknown') for u in data.get('utterances', [])}
                             speakers_count = len(speakers) or 1
-                        update_meeting(m['id'], m['user_id'], {
+                        await update_meeting_async(m['id'], m['user_id'], {
                             'transcript_status': 'completed',
                             'transcript_text': text,
                             'duration_seconds': duration,
