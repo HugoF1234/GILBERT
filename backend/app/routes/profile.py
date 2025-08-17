@@ -61,12 +61,18 @@ async def update_profile(
     user_id = current_user["id"]
     update_fields = {}
     
+    # Interdire la modification de l'email depuis cette route (sécurité et cohérence UI)
+    if user_data.email is not None and user_data.email != current_user.get("email"):
+        raise HTTPException(
+            status_code=400,
+            detail="La modification de l'email n'est pas autorisée depuis cette interface."
+        )
+
     # Ne mettre à jour que les champs qui sont fournis
     if user_data.full_name is not None:
         update_fields["full_name"] = user_data.full_name
     
-    if user_data.email is not None:
-        update_fields["email"] = user_data.email
+    # Ignorer explicitement tout changement d'email même s'il est envoyé par erreur
     
     # Si l'URL de la photo de profil est fournie, la mettre à jour
     if user_data.profile_picture_url is not None:
