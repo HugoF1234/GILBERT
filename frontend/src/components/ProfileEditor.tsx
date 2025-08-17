@@ -63,8 +63,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ open, onClose, onProfileU
     try {
       setLoading(true);
       const updatedProfile = await updateUserProfile({
-        full_name: fullName,
-        email
+        full_name: fullName
       });
       
       setProfile(updatedProfile);
@@ -248,11 +247,12 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ open, onClose, onProfileU
               <TextField
                 label="Email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 fullWidth
                 margin="normal"
                 variant="outlined"
                 type="email"
+                InputProps={{ readOnly: true }}
+                helperText="L'email est défini lors de l'inscription et ne peut pas être modifié."
               />
             </Box>
           </>
