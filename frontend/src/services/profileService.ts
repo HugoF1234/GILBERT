@@ -78,8 +78,12 @@ export async function updateUserProfile(data: {
   full_name?: string;
   email?: string;
 }): Promise<ProfileData> {
-  // Assurer que les champs correspondent à ce qui est attendu dans la documentation API
-  const response = await apiClient.put<ProfileData>('/profile/update', data);
+  // Ne pas envoyer l'email: il est fixé à l'inscription / OAuth et non modifiable ici
+  const { full_name } = data || {};
+  const payload: { full_name?: string } = {};
+  if (typeof full_name === 'string') payload.full_name = full_name;
+
+  const response = await apiClient.put<ProfileData>('/profile/update', payload);
   return formatProfileData(response);
 }
 
