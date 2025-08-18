@@ -14,20 +14,21 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-# Obtenir le chemin de base du projet
-BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+# Racine de l'application (répertoire de travail du processus)
+# Cela correspond à /app dans le conteneur et aligne les chemins avec main.py (app.mount("/uploads", directory="uploads"))
+APP_ROOT = Path(os.getcwd())
 
 # Vérifier si nous sommes sur Render (disque persistant existe)
 RENDER_DISK_PATH = os.environ.get("RENDER_DISK_PATH", "/data")
 ON_RENDER = os.path.exists(RENDER_DISK_PATH)
 
-# Dossier des uploads - utiliser le disque persistant sur Render
+# Dossier des uploads - utiliser le disque persistant sur Render sinon /app/uploads
 if ON_RENDER:
     logger.info(f"Utilisation du disque persistant Render pour les uploads: {RENDER_DISK_PATH}")
     UPLOADS_DIR = Path(RENDER_DISK_PATH) / "uploads"
 else:
-    logger.info("Utilisation du dossier local pour les uploads")
-    UPLOADS_DIR = BASE_DIR / "uploads"
+    logger.info("Utilisation du dossier local pour les uploads (/app/uploads)")
+    UPLOADS_DIR = APP_ROOT / "uploads"
 
 PROFILE_PICTURES_DIR = UPLOADS_DIR / "profile_pictures"
 
@@ -115,8 +116,14 @@ def delete_profile_picture(file_url: str):
     if not file_url or not file_url.startswith("/uploads/profile_pictures/"):
         return False
     
-    # Construire le chemin complet
-    file_path = BASE_DIR / file_url.lstrip("/")
+    # Construire le chemin complet à partir de /uploads
+    try:
+        prefix = "/uploads/"
+        relative_part = file_url[len(prefix):] if file_url.startswith(prefix) else file_url.lstrip("/")
+        file_path = UPLOADS_DIR / relative_part
+    except Exception:
+        # Fallback défensif
+        file_path = UPLOADS_DIR / file_url.lstrip("/")
     
     try:
         if os.path.exists(file_path):
