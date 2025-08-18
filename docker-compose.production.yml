@@ -131,6 +131,7 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - certbot_webroot:/var/www/certbot:ro
       - certbot_ssl:/etc/letsencrypt:ro
+      - uploads_data:/app/uploads:ro
     depends_on:
       - api
       - frontend
