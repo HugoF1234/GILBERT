@@ -173,7 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onViewChange, user, isMobile = false,
       });
       
       setUserProfile(updatedProfile);
-      showSuccessPopup('Succès', 'Votre profil a été mis à jour avec succès.');
+      // Succès silencieux pour accélérer le parcours
       setShowProfileEditor(false);
     } catch (error) {
       console.error('u00c9chec de la mise u00e0 jour du profil:', error);
@@ -254,7 +254,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onViewChange, user, isMobile = false,
         _lastUpdated: Date.now()
       }));
       
-      showSuccessPopup('Succès', 'Votre photo de profil a été mise à jour avec succès.');
+      // Succès silencieux pour accélérer le parcours
     } catch (error) {
       console.error('Échec du téléchargement de la photo de profil:', error);
       showErrorPopup('Erreur', 'Échec du téléchargement de la photo de profil. Veuillez réessayer.');
