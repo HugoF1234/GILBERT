@@ -119,11 +119,20 @@ const MeetingSummaryRenderer: React.FC<MeetingSummaryRendererProps> = ({ summary
   if (lines.length > 0 && lines[0].match(/^#\s+[\p{Emoji}\p{Emoji_Presentation}\p{Emoji_Modifier_Base}\p{Emoji_Modifier}\p{Emoji_Component}]*\s*Réunion/ui)) {
     // Extraire le titre principal
     const mainTitle = lines[0].replace(/^#\s+/, '');
+    // Extraire une date au format JJ/MM/AAAA s'il est présent dans le titre
+    const dateMatch = mainTitle.match(/\[(.*?)\]/);
+    const prettyDate = dateMatch ? dateMatch[1] : null;
+
     renderedSections.push(
       <Box key="meeting-title" sx={{ mb: 3, borderBottom: '1px solid #eee', pb: 2 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           {mainTitle}
         </Typography>
+        {prettyDate && (
+          <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 0.5 }}>
+            Date: {prettyDate}
+          </Typography>
+        )}
       </Box>
     );
     // Supprimer le titre traité des lignes à analyser
