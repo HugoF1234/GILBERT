@@ -67,7 +67,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ open, onClose, onProfileU
       });
       
       setProfile(updatedProfile);
-      showSuccessPopup('Success', 'Your profile has been updated successfully.');
+      // Success toast disabled to streamline UX
       
       if (onProfileUpdated) {
         onProfileUpdated(updatedProfile);
@@ -122,7 +122,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ open, onClose, onProfileU
       
       // Mise à jour du profil avec les données réelles du serveur
       setProfile(updatedProfile);
-      showSuccessPopup('Success', 'Your profile picture has been updated successfully.');
+      // Success toast disabled to streamline UX
       
       if (onProfileUpdated) {
         onProfileUpdated(updatedProfile);
