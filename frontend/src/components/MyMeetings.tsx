@@ -2634,7 +2634,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                     summaryText={meeting.summary_text}
                     meetingId={meeting.id}
                     meetingName={meeting.title || 'Réunion'}
-                    meetingDate={new Date(meeting.created_at).toLocaleDateString()}
+                    meetingDate={new Date(meeting.created_at).toLocaleDateString('fr-FR')}
                     onSuccess={() => { /* Succès silencieux */ }}
                     onError={(message) => showErrorPopup('Erreur', message)}
                   />
@@ -2648,6 +2648,15 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
           </Box>
         </DialogTitle>
         <DialogContent sx={{ mt: 2, minHeight: '300px', maxHeight: '60vh', overflowY: 'auto' }}>
+          {(() => {
+            const meeting = meetings.find(m => m.id === viewingSummaryId);
+            if (!meeting) return null;
+            return (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Date: {new Date(meeting.created_at).toLocaleDateString('fr-FR')}
+              </Typography>
+            );
+          })()}
           {renderSummary()}
         </DialogContent>
         <DialogActions>
