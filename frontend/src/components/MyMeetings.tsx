@@ -712,7 +712,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
         )
       );
       
-      showSuccessPopup('Succès', 'Métadonnées mises à jour avec succès');
+      // Succès silencieux
     } catch (err) {
       console.error('Failed to update metadata:', err);
       showErrorPopup('Erreur', `Erreur: ${err instanceof Error ? err.message : 'Erreur inconnue'}`);
@@ -801,7 +801,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
           
           if (updatedMeeting?.summary_status === 'completed') {
             console.log(`Summary completed for meeting ${meetingId}`);
-            showSuccessPopup('Succès', 'Compte rendu généré avec succès');
+            // Succès silencieux
             setGeneratingSummaryId(null);
             setGeneratingSummaryInStorage(null);
             cleanupPolling();
@@ -954,7 +954,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
       
       setEditingSpeaker(null);
       setEditingName('');
-      showSuccessPopup('Succès', `Speaker renommé en "${newName.trim()}"`);
+      // Succès silencieux
     } catch (error) {
       console.error('Error updating speaker name:', error);
       showErrorPopup('Erreur', 'Erreur lors de la mise à jour du nom');
@@ -978,7 +978,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
       // Recharger la transcription pour s'assurer que tout est synchronisé
       await handleViewTranscript(selectedMeeting.id);
       
-      showSuccessPopup('Succès', 'Transcription mise à jour avec les noms personnalisés');
+      // Succès silencieux
     } catch (error) {
       console.error('Error updating transcript:', error);
       showErrorPopup('Erreur', 'Erreur lors de la mise à jour de la transcription');
@@ -1003,7 +1003,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
       setRetryingMeetingId(meetingId);
       // Implementation for retrying transcription
       await fetchMeetings();
-      showSuccessPopup('Success', 'Transcription retry initiated');
+      // Succès silencieux
     } catch (error) {
       console.error('Error retrying transcription:', error);
       showErrorPopup('Error', 'Failed to retry transcription');
@@ -1028,7 +1028,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
     try {
       setIsDeleting(true);
       await deleteMeeting(meetingToDelete.id);
-      showSuccessPopup('Succès', 'Réunion supprimée avec succès');
+      // Succès silencieux
       // Forcer un rafraîchissement complet en invalidant le cache
       await invalidateCacheAndRefresh();
     } catch (error) {
@@ -1085,7 +1085,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
       setIsEditingTranscript(false);
       setEditedTranscriptText('');
       
-      showSuccessPopup('Succès', 'La transcription a été mise à jour avec succès');
+      // Succès silencieux
     } catch (error) {
       console.error('Error updating transcript:', error);
       showErrorPopup('Erreur', 'Impossible de mettre à jour la transcription');
@@ -1145,7 +1145,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
       );
       
       if (meeting.summary_status === 'completed' && meeting.summary_text) {
-        showSuccessPopup('Résolu', 'Le résumé était déjà terminé sur le serveur');
+        // Succès silencieux
       } else if (meeting.summary_status === 'error') {
         showErrorPopup('Erreur', 'La génération du résumé a échoué sur le serveur');
       } else {
@@ -1210,7 +1210,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
         
         if (updatedMeeting?.summary_status === 'completed') {
           console.log(`Resumed polling: Summary completed for meeting ${meetingId}`);
-          showSuccessPopup('Succès', 'Compte rendu généré avec succès');
+          // Succès silencieux
           setGeneratingSummaryId(null);
           setGeneratingSummaryInStorage(null);
           cleanupPolling();
@@ -2156,7 +2156,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                 meetingId={selectedMeeting.id}
                 meetingName={selectedMeeting.title || 'Réunion'}
                 meetingDate={new Date(selectedMeeting.created_at).toLocaleDateString()}
-                onSuccess={(message) => showSuccessPopup('Succès', message)}
+                onSuccess={() => { /* Succès silencieux */ }}
                 onError={(message) => showErrorPopup('Erreur', message)}
               />
             )}
@@ -2635,7 +2635,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                     meetingId={meeting.id}
                     meetingName={meeting.title || 'Réunion'}
                     meetingDate={new Date(meeting.created_at).toLocaleDateString()}
-                    onSuccess={(message) => showSuccessPopup('Succès', message)}
+                    onSuccess={() => { /* Succès silencieux */ }}
                     onError={(message) => showErrorPopup('Erreur', message)}
                   />
                 );
