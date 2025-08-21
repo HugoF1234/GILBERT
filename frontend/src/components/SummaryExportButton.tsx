@@ -20,83 +20,18 @@ import {
 import MarkdownIt from 'markdown-it';
 import html2pdf from 'html2pdf.js';
 
-// Fonction de nettoyage et restructuration du contenu
-const cleanAndStructureContent = (text: string): string => {
-  let cleanedText = text;
-  
-  // Étape 1: Nettoyage des caractères corrompus
-  cleanedText = cleanedText
-    .replace(/Ø[=><][ÜüYy][A-Za-z0-9°*àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ¬]*\s*/g, '')
-    .replace(/Ø[=><][UuAa][A-Za-z0-9°*àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ¬]*\s*/g, '')
-    .replace(/Ø[^a-zA-Z\s]{1,4}[A-Za-z0-9°*àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ¬]*\s*/g, '')
-    .replace(/[#ñb°¬]+\s*/g, '')
-    .replace(/[ØÜüYyUuAa][=><]+/g, '')
-    .replace(/\s+/g, ' ')
-    .replace(/\n\s+/g, '\n')
-    .replace(/^\s*[-—]+\s*$/gm, '')
-    .trim();
+// Nettoie le contenu du résumé sans le réécrire, pour conserver la réunion courante
+const cleanSummaryContent = (text: string): string => {
+  if (!text) return '';
+  let cleaned = text.trim();
 
-  // Étape 2: Reconstruction avec du contenu propre et structuré
-  let structuredContent = '';
+  // Si le contenu commence par un fence de code (ex: ```markdown), le retirer ainsi que le fence final
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```[a-zA-Z-]*\s*/m, '');
+    cleaned = cleaned.replace(/\n?```\s*$/m, '');
+  }
 
-  // Participants - extraire depuis le début
-  structuredContent += `## 👥 Participants\n\n`;
-  structuredContent += `Delphine de Verneuil, Franck Quémone\n\n`;
-  
-  // Animateur (si détectable)
-  structuredContent += `**Animateur/trice :** Non spécifié\n\n`;
-  
-  // Durée (si détectable)
-  structuredContent += `**Durée :** Non spécifiée\n\n`;
-  
-  // Résumé express - extraire uniquement le contenu principal, pas tout le texte
-  structuredContent += `## 🧠 Résumé express\n\n`;
-  structuredContent += `La réunion a commencé par l'accueil de nouveaux élus, Delphine de Verneuil et Franck Quémone. `;
-  structuredContent += `Ensuite, plusieurs déports ont été annoncés pour diverses délibérations. La réunion a également abordé `;
-  structuredContent += `l'approbation des procès-verbaux des séances précédentes et des comptes-rendus des décisions prises et des marchés passés. `;
-  structuredContent += `Une question a été soulevée concernant un marché pour une œuvre d'art dans le quartier Est de la ville d'Orléans.\n\n`;
-  
-  // Ordre du jour - contenu propre
-  structuredContent += `## 📋 Ordre du jour\n\n`;
-  structuredContent += `1. 🎤 Accueil des nouveaux élus\n`;
-  structuredContent += `2. 🚗 Annonce des déports pour les délibérations\n`;
-  structuredContent += `3. 👤 Approbation des procès-verbaux des séances de juin et juillet\n`;
-  structuredContent += `4. ⚖️ Approbation des comptes-rendus des décisions prises et des marchés passés\n\n`;
-  
-  // Décisions prises
-  structuredContent += `## ✅ Décisions prises\n\n`;
-  structuredContent += `• Approbation des procès-verbaux des séances de juin et juillet\n`;
-  structuredContent += `• Approbation des comptes-rendus des décisions prises et des marchés passés\n\n`;
-  
-  // Tâches - tableau propre
-  structuredContent += `## 📋 Tâches & actions à suivre\n\n`;
-  structuredContent += `*Aucune tâche spécifique n'a été mentionnée lors de cette réunion.*\n\n`;
-  structuredContent += `| Tâche | Responsable | Échéance | Statut |\n`;
-  structuredContent += `|-------|-------------|----------|--------|\n`;
-  structuredContent += `| Aucune tâche spécifique mentionnée | - | - | - |\n\n`;
-  
-  // Points de vigilance
-  structuredContent += `## ⚠️ Points de vigilance\n\n`;
-  structuredContent += `• Clarification sur le marché pour l'œuvre d'art dans le quartier Est de la ville d'Orléans\n\n`;
-  
-  // Sujets abordés - tableau propre
-  structuredContent += `## 📊 Sujets abordés\n\n`;
-  structuredContent += `| Sujet | Intervenants |\n`;
-  structuredContent += `|-------|-------------|\n`;
-  structuredContent += `| Accueil des nouveaux élus | Speaker A |\n`;
-  structuredContent += `| Annonce des déports | Speaker A |\n`;
-  structuredContent += `| Approbation des procès-verbaux | Speaker A |\n`;
-  structuredContent += `| Approbation des comptes-rendus | Speaker A, Speaker B, Speaker C |\n\n`;
-  
-  // Ressources mentionnées
-  structuredContent += `## 📚 Ressources mentionnées\n\n`;
-  structuredContent += `📄 Aucune ressource spécifique mentionnée\n\n`;
-  
-  // Prochaine réunion
-  structuredContent += `## 📅 Prochaine réunion\n\n`;
-  structuredContent += `📍 Non mentionnée\n\n`;
-  
-  return structuredContent;
+  return cleaned.trim();
 };
 
 // Fonction de conversion Markdown vers PDF avec markdown-it + html2pdf.js
@@ -106,8 +41,8 @@ const exportSummaryToPDF = async (
   meetingDate: string
 ): Promise<void> => {
   try {
-    // Nettoyer et structurer le texte
-    const structuredText = cleanAndStructureContent(summaryText);
+    // Nettoyer le texte fourni sans le remplacer par un gabarit
+    const cleanedText = cleanSummaryContent(summaryText);
   
     // Initialiser markdown-it avec les bonnes options pour les tableaux
     const md = new MarkdownIt({
@@ -124,7 +59,7 @@ const exportSummaryToPDF = async (
 
 ---
 
-${structuredText}
+${cleanedText}
 
 ---
 
