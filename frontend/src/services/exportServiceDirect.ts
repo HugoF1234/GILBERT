@@ -19,7 +19,8 @@ export async function exportSummaryToWord(
 
   try {
     // Créer un contenu HTML propre
-    const cleanedText = cleanMarkdownText(summaryText);
+    const cleanedMarkdown = stripCodeFences(summaryText);
+    const cleanedText = cleanMarkdownText(cleanedMarkdown);
     
     // Utiliser un format HTML simple pour Word
     const wordContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" 
@@ -74,8 +75,9 @@ export async function exportSummaryToWord(
       type: 'application/msword'
     });
     
-    // Générer un nom de fichier
-    const fileName = `Transcription_${meetingName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.doc`;
+    // Générer un nom de fichier basé sur la date de la réunion
+    const dateForFilename = normalizeDateForFilename(meetingDate);
+    const fileName = `Compte_rendu_${meetingName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}_${dateForFilename}.doc`;
     
     // Télécharger le fichier
     console.log('Téléchargement du fichier Word:', fileName);
@@ -151,4 +153,31 @@ function cleanMarkdownText(markdown: string): string {
   html = html.replace(/\n/g, '<br>');
   
   return html;
+}
+
+// Supprime les fences de code éventuels autour du résumé (```markdown ... ```)
+function stripCodeFences(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```[a-zA-Z-]*\s*/m, '');
+    cleaned = cleaned.replace(/\n?```\s*$/m, '');
+  }
+  return cleaned.trim();
+}
+
+// Convertit une date JJ/MM/AAAA ou ISO en AAAA-MM-JJ pour le nom de fichier
+function normalizeDateForFilename(input: string): string {
+  if (!input) return new Date().toISOString().slice(0, 10);
+  // Si format JJ/MM/AAAA
+  const m = input.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) {
+    const [, jj, mm, aaaa] = m;
+    return `${aaaa}-${mm}-${jj}`;
+  }
+  // Sinon tenter de parser avec Date
+  const d = new Date(input);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  // Fallback
+  return new Date().toISOString().slice(0, 10);
 }
