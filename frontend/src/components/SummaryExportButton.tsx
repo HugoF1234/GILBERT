@@ -19,6 +19,7 @@ import {
 } from '../services/exportServiceDirect';
 import MarkdownIt from 'markdown-it';
 import html2pdf from 'html2pdf.js';
+import { getMeeting } from '../services/meetingService';
 
 // Nettoie le contenu du résumé sans le réécrire, pour conserver la réunion courante
 const cleanSummaryContent = (text: string): string => {
@@ -305,8 +306,8 @@ const exportSummaryToMarkdown = async (
   meetingDate: string
 ): Promise<void> => {
   try {
-    // Utiliser la même logique de structuration que le PDF
-    const structuredText = cleanAndStructureContent(summaryText);
+    // Utiliser le même nettoyage que pour le PDF, sans gabarit
+    const structuredText = cleanSummaryContent(summaryText);
     
     // Créer le contenu Markdown avec un en-tête propre
     const markdownContent = `# Compte rendu - ${meetingName}
@@ -380,7 +381,7 @@ const SummaryExportButton: React.FC<SummaryExportButtonProps> = ({
   };
 
   const handleExport = async (format: 'pdf' | 'word' | 'markdown') => {
-    if (!summaryText || !meetingId) {
+    if (!meetingId) {
       onError('Le compte rendu n\'est pas disponible pour l\'exportation');
       handleCloseMenu();
       return;
@@ -389,17 +390,34 @@ const SummaryExportButton: React.FC<SummaryExportButtonProps> = ({
     setLoading(format);
 
     try {
+      // Toujours récupérer la version la plus récente du meeting pour éviter tout contenu obsolète
+      let latestSummary = summaryText || '';
+      try {
+        const latest = await getMeeting(meetingId);
+        if (latest?.summary_text) {
+          latestSummary = latest.summary_text;
+        }
+      } catch (e) {
+        // Si l'appel échoue, on continue avec le texte déjà présent
+        console.warn('Could not refresh meeting before export:', e);
+      }
+
+      if (!latestSummary || latestSummary.trim() === '') {
+        onError('Le compte rendu n\'est pas disponible pour l\'exportation');
+        return;
+      }
+
       switch (format) {
         case 'pdf':
-          await exportSummaryToPDF(summaryText, meetingName, meetingDate);
+          await exportSummaryToPDF(latestSummary, meetingName, meetingDate);
           onSuccess('Le compte rendu a été exporté au format PDF');
           break;
         case 'word':
-          await exportSummaryToWord(summaryText, meetingName, meetingDate);
+          await exportSummaryToWord(latestSummary, meetingName, meetingDate);
           onSuccess('Le compte rendu a été exporté au format Word');
           break;
         case 'markdown':
-          await exportSummaryToMarkdown(summaryText, meetingName, meetingDate);
+          await exportSummaryToMarkdown(latestSummary, meetingName, meetingDate);
           onSuccess('Le compte rendu a été exporté au format Markdown');
           break;
       }
