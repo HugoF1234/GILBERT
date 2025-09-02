@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -7,7 +7,7 @@ import {
   keyframes,
   styled,
   alpha,
-  Button,
+  // Button,
   Stack,
   Chip,
   Avatar,
@@ -15,10 +15,11 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Divider,
+  Grid,
 } from '@mui/material';
 import { 
-  Description as DescriptionIcon, 
-  Lock as LockIcon,
+  // Description as DescriptionIcon, 
+  // Lock as LockIcon,
   AutoAwesome as AutoAwesomeIcon,
   Business as BusinessIcon,
   Code as CodeIcon,
@@ -275,6 +276,45 @@ const templates = [
 ];
 
 const TemplatesView: React.FC = () => {
+  const [selectedType, setSelectedType] = useState<'default' | 'formation'>('default');
+
+  useEffect(() => {
+    try {
+      const pref = localStorage.getItem('default_template_type');
+      if (pref === 'formation' || pref === 'default') {
+        setSelectedType(pref);
+      }
+    } catch {}
+  }, []);
+
+  const integratedTemplates: Array<{
+    key: 'default' | 'formation';
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+    color: string;
+  }> = [
+    {
+      key: 'default',
+      label: 'Par défaut',
+      description: 'Format standard pour tout type de réunion.',
+      icon: <AssignmentIcon sx={{ color: '#3B82F6' }} />,
+      color: '#3B82F6',
+    },
+    {
+      key: 'formation',
+      label: 'Formation',
+      description: 'Compte rendu orienté apprentissages et exercices.',
+      icon: <SchoolIcon sx={{ color: '#06B6D4' }} />,
+      color: '#06B6D4',
+    },
+  ];
+
+  const handleSelect = (value: 'default' | 'formation') => {
+    setSelectedType(value);
+    try { localStorage.setItem('default_template_type', value); } catch {}
+  };
+
   return (
     <Box
       sx={{
@@ -449,35 +489,55 @@ const TemplatesView: React.FC = () => {
             <Typography variant="body2" sx={{ color: '#64748B', mb: 1, textAlign: 'center' }}>
               Ces templates embarqués sont disponibles immédiatement.
             </Typography>
-            <ToggleButtonGroup exclusive aria-label="template-type" sx={{ mb: 2 }}>
-              <ToggleButton value="default" onClick={() => { try { localStorage.setItem('default_template_type', 'default'); } catch {} }}>
+            <ToggleButtonGroup
+              exclusive
+              aria-label="template-type"
+              value={selectedType}
+              onChange={(_, val) => val && handleSelect(val)}
+              sx={{ mb: 2 }}
+            >
+              <ToggleButton value="default">
                 Par défaut
               </ToggleButton>
-              <ToggleButton value="formation" onClick={() => { try { localStorage.setItem('default_template_type', 'formation'); } catch {} }}>
+              <ToggleButton value="formation">
                 Formation
               </ToggleButton>
             </ToggleButtonGroup>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ width: '100%' }}>
-              <Paper variant="outlined" sx={{ flex: 1, p: 2, borderRadius: 2 }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <AssignmentIcon sx={{ color: '#3B82F6' }} />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Par défaut</Typography>
-                  <CheckCircleIcon sx={{ color: '#22C55E', ml: 'auto' }} />
-                </Stack>
-                <Typography variant="body2" sx={{ color: '#64748B', mt: 1 }}>
-                  Format standard pour tout type de réunion.
-                </Typography>
-              </Paper>
-              <Paper variant="outlined" sx={{ flex: 1, p: 2, borderRadius: 2 }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <SchoolIcon sx={{ color: '#06B6D4' }} />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Formation</Typography>
-                </Stack>
-                <Typography variant="body2" sx={{ color: '#64748B', mt: 1 }}>
-                  Compte rendu orienté apprentissages et exercices.
-                </Typography>
-              </Paper>
-            </Stack>
+            <Grid container spacing={2} sx={{ width: '100%' }}>
+              {integratedTemplates.map(t => {
+                const isSelected = selectedType === t.key;
+                return (
+                  <Grid key={t.key} item xs={12} md={6}>
+                    <Paper
+                      role="button"
+                      aria-pressed={isSelected}
+                      onClick={() => handleSelect(t.key)}
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                        position: 'relative',
+                        borderColor: isSelected ? alpha(t.color, 0.6) : undefined,
+                        boxShadow: isSelected ? `0 0 0 3px ${alpha(t.color, 0.15)}` : undefined,
+                        '&:hover': {
+                          boxShadow: `0 2px 10px ${alpha('#000', 0.06)}`,
+                        }
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        {t.icon}
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{t.label}</Typography>
+                        {isSelected && <CheckCircleIcon sx={{ color: '#22C55E', ml: 'auto' }} />}
+                      </Stack>
+                      <Typography variant="body2" sx={{ color: '#64748B', mt: 1 }}>
+                        {t.description}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                );
+              })}
+            </Grid>
             <Divider sx={{ my: 1, width: '100%' }} />
             <Typography variant="body2" sx={{ color: '#94A3B8' }}>
               Les templates personnalisés restent Premium.
