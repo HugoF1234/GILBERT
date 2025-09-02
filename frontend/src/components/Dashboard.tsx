@@ -2562,7 +2562,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
               <CardActions>
                 <Button 
                   size="small"
-                  onClick={handleOpenSettings}
+                  onClick={
+                    feature.action === "Commencer l'enregistrement"
+                      ? handleOpenRecordingWarning
+                      : handleOpenSettings
+                  }
                 >
                   {feature.action}
                 </Button>
