@@ -40,6 +40,13 @@ const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
   useEffect(() => {
     if (open) {
       loadClients();
+      // Préselectionner le type de template depuis la préférence locale si disponible
+      try {
+        const pref = localStorage.getItem('default_template_type');
+        if (pref === 'formation' || pref === 'default') {
+          setSelectedTemplateType(pref as 'formation' | 'default');
+        }
+      } catch {}
     }
   }, [open]);
 
