@@ -737,7 +737,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
   };
   
   // Génère le résumé avec le template sélectionné
-  const handleTemplateSelect = async (clientId: string | null) => {
+  const handleTemplateSelect = async (clientId: string | null, templateType?: 'formation' | 'default' | null) => {
     if (!currentMeetingId) return;
     
     const meetingId = currentMeetingId;
@@ -763,7 +763,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
       );
       
       // Appeler l'API pour générer le compte rendu avec le template sélectionné
-      const meeting = await generateMeetingSummary(meetingId, clientId);
+      const meeting = await generateMeetingSummary(meetingId, clientId, templateType);
       
       if (!meeting) {
         console.error(`Failed to initiate summary generation for meeting ${meetingId}`);
