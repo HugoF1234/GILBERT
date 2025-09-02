@@ -309,6 +309,7 @@ async def update_meeting_route(
 @router.post("/{meeting_id}/generate-summary", response_model=dict)
 async def generate_meeting_summary_route(
     meeting_id: str = Path(..., description="ID unique de la réunion"),
+    template_type: Optional[str] = Query(None, description="Type de template intégré (ex: 'formation')"),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -347,7 +348,7 @@ async def generate_meeting_summary_route(
 
     # Mettre le statut en processing et lancer en arrière-plan (version 100% async-safe)
     await update_meeting_async(meeting_id, current_user["id"], {"summary_status": "processing"})
-    asyncio.create_task(process_meeting_summary_async(meeting_id, current_user["id"]))
+    asyncio.create_task(process_meeting_summary_async(meeting_id, current_user["id"], None, template_type))
 
     # Retourner immédiatement
     updated = await get_meeting_async(meeting_id, current_user["id"]) or {"id": meeting_id}
@@ -356,12 +357,13 @@ async def generate_meeting_summary_route(
 @router.post("/{meeting_id}/summary", response_model=dict)
 async def generate_meeting_summary_alias(
     meeting_id: str = Path(..., description="ID unique de la réunion"),
+    template_type: Optional[str] = Query(None, description="Type de template intégré (ex: 'formation')"),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Alias: permet aussi POST /meetings/{meeting_id}/summary pour lancer la génération.
     """
-    return await generate_meeting_summary_route(meeting_id, current_user)
+    return await generate_meeting_summary_route(meeting_id, template_type, current_user)
 
 @router.get("/{meeting_id}/summary", response_model=dict)
 async def get_meeting_summary(
