@@ -1,5 +1,4 @@
-import apiClient from './apiClient';
-import { normalizeSpeakers } from './speakerService';
+import apiClient, { API_BASE_URL } from './apiClient';
 import { verifyTokenValidity } from './authService';
 
 // Clé utilisée pour stocker les meetings dans le cache localStorage
@@ -73,6 +72,7 @@ export interface UploadOptions {
   onError?: (error: Error) => void;
   format?: string; // Format audio (wav, mp3, webm, etc.)
   title?: string; // Titre de la réunion
+  signal?: AbortSignal; // Permettre l'annulation
 }
 
 /**
@@ -96,11 +96,66 @@ export async function uploadMeeting(
     
     console.log('Upload URL:', url);
     
-    const response = await apiClient.post<Meeting>(
-      url,
-      formData,
-      true // multipart form data
-    );
+    const endpoint = `${API_BASE_URL}${url}`;
+    const token = localStorage.getItem('auth_token');
+
+    let response: Meeting;
+
+    if (options?.onProgress && typeof XMLHttpRequest !== 'undefined') {
+      // Utiliser XHR pour suivre précisément la progression
+      response = await new Promise<Meeting>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', endpoint, true);
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
+
+        // Support annulation
+        const abortHandler = () => {
+          try { xhr.abort(); } catch {}
+          reject(new DOMException('Aborted', 'AbortError'));
+        };
+        if (options?.signal) {
+          options.signal.addEventListener('abort', abortHandler, { once: true });
+        }
+
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable && options?.onProgress) {
+            const percent = Math.round((evt.loaded / evt.total) * 100);
+            options.onProgress(percent);
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const json = JSON.parse(xhr.responseText) as Meeting;
+                resolve(json);
+              } catch (e) {
+                reject(new Error('Invalid JSON response'));
+              }
+            } else {
+              reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText}`));
+            }
+          }
+        };
+
+        xhr.send(formData);
+      });
+    } else {
+      // Fallback fetch (pas d'événements de progression nativement)
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const controller = new AbortController();
+      const signal = options?.signal || controller.signal;
+      const res = await fetch(endpoint, { method: 'POST', headers, body: formData, signal });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Upload failed (${res.status}): ${errText}`);
+      }
+      response = (await res.json()) as Meeting;
+    }
     
     if (!response.id) {
       console.warn('Server returned a response without meeting ID:', response);
