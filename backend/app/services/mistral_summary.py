@@ -78,27 +78,44 @@ def generate_meeting_summary(
         
         # Préparer prompts intégrés
         formation_prompt = f"""Objectif :
-À partir d'une transcription d'une session de formation, produire un compte rendu orienté apprentissages.
+À partir d'une transcription d'une session de formation, produire un compte rendu PEDAGOGIQUE, FACTUEL et EXHAUSTIF des points réellement abordés.
+
+RÈGLES STRICTES (à respecter à 100%) :
+- NE JAMAIS inventer d'information. Aucune supposition. Aucune hallucination.
+- Interdire les formulations d'incertitude: pas de "peut-être", "semble", "probablement", "on dirait", "?" ajouté en fin de phrase.
+- N'inclure un prénom/noms propres que s'ils sont clairement et explicitement énoncés comme tels dans la transcription; sinon, anonymiser (ex: "Participant A", "Participant B").
+- Si une information n'est pas présente, écrire exactement "Non mentionné".
+- Résumer précisément chaque point important; couvrir toutes les questions posées et leurs réponses, même brèves.
+- Français clair, phrases concises; éviter le verbiage. Pas de placeholders.
+- Sortie uniquement en Markdown, sections dans l'ordre ci‑dessous, sans texte superflu.
 
 FORMAT EXACT ATTENDU :
 
 # 🎓 Session de formation{f" — '{meeting_title}'" if meeting_title else ''}
 
-- 👥 **Participants** : [Liste]
-- 🧑‍🏫 **Formateur** : [Nom si identifiable]
-- 🕒 **Durée estimée** : [Durée si mentionnée]
+- 👥 **Participants** : [Liste ou "Non mentionné"]
+- 🧑‍🏫 **Formateur** : [Nom ou "Non mentionné"]
+- 🕒 **Durée estimée** : [Durée ou "Non mentionné"]
 
 ---
 
-## 🧠 Objectifs pédagogiques
+## 🎯 Objectifs pédagogiques
 - [Objectif 1]
 - [Objectif 2]
 
 ---
 
-## 📌 Points clés appris
+## 🧠 Points clés appris
 - [Point 1]
 - [Point 2]
+
+---
+
+## ❓ Questions & Réponses (Q/R)
+- Q: [Question 1]
+  R: [Réponse 1]
+- Q: [Question 2]
+  R: [Réponse 2]
 
 ---
 
@@ -109,23 +126,20 @@ FORMAT EXACT ATTENDU :
 
 ---
 
-## ❓ Questions fréquentes et réponses
-- Q: [Question]  
-  R: [Réponse]
-
----
-
-## 🔜 Actions / Pratique recommandée
-- [Action 1]
+## 🔜 Actions / Mise en pratique
+- [Action 1] — Responsable: [Nom ou "Non mentionné"] — Échéance: ["Non mentionné" si absente]
 - [Action 2]
 
 ---
 
-## 📚 Ressources
+## 📚 Ressources citées
 - [Ressource 1]
 - [Ressource 2]
 
-Consigne importante: REMPLACE tous les placeholders par les informations réelles extraites de la transcription. Si une info manque, indiquer clairement "Non mentionné" sans garder de crochets.
+Consignes supplémentaires :
+- Écarter les bruits/verbatim hors sujet.
+- Préserver le sens exact des décisions/conclusions.
+- Ne jamais conserver de crochets si l'information réelle est disponible.
 
 Transcription :
 
@@ -226,12 +240,15 @@ Voici la transcription d'une réunion{title_part} :
             "Authorization": f"Bearer {MISTRAL_API_KEY}"
         }
         
+        # Température plus basse en mode formation pour renforcer la déterminisme
+        temperature_value = 0.1 if (template_type and template_type.lower() == "formation") else 0.3
+
         payload = {
             "model": "mistral-large-latest",  # Utiliser le modèle le plus récent et le plus performant
             "messages": [
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.3,  # Température basse pour des résultats plus cohérents
+            "temperature": temperature_value,  # Plus strict en mode formation
             "max_tokens": 4000  # Limite de tokens pour la réponse
         }
         
