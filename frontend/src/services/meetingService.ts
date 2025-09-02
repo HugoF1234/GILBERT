@@ -1072,7 +1072,11 @@ function attemptDiarizationOnRawText(text: string): string {
  * @param clientId ID du client pour utiliser son template (optionnel)
  * @returns La réunion mise à jour avec le statut du compte rendu
  */
-export async function generateMeetingSummary(meetingId: string, clientId?: string | null): Promise<Meeting> {
+export async function generateMeetingSummary(
+  meetingId: string,
+  clientId?: string | null,
+  templateType?: 'formation' | 'default' | null
+): Promise<Meeting> {
   try {
     console.log(`🚀 [DEBUG] Starting generateMeetingSummary for meeting ${meetingId}${clientId ? ` with client template: ${clientId}` : ' with default template'}`);
     
@@ -1125,7 +1129,10 @@ export async function generateMeetingSummary(meetingId: string, clientId?: strin
       // Essai 1: POST /meetings/{meeting_id}/generate-summary (endpoint principal selon la doc)
       try {
         console.log('🎯 [DEBUG] Essai 1: POST sur /meetings/{meeting_id}/generate-summary');
-        data = await apiClient.post(generateEndpoint);
+        const urlWithTemplate = templateType && templateType !== 'default'
+          ? `${generateEndpoint}?template_type=${encodeURIComponent(templateType)}`
+          : generateEndpoint;
+        data = await apiClient.post(urlWithTemplate);
         console.log('✅ [DEBUG] Réponse API de génération de résumé (essai 1):', data);
         
         // Vérifier si la réponse contient des informations utiles
@@ -1150,7 +1157,10 @@ export async function generateMeetingSummary(meetingId: string, clientId?: strin
       try {
         console.log('🎯 [DEBUG] Essai 2: POST sur /meetings/{meeting_id}/summary');
         const summaryEndpoint = `/meetings/${meetingId}/summary`;
-        data = await apiClient.post(summaryEndpoint);
+        const urlWithTemplate = templateType && templateType !== 'default'
+          ? `${summaryEndpoint}?template_type=${encodeURIComponent(templateType)}`
+          : summaryEndpoint;
+        data = await apiClient.post(urlWithTemplate);
         console.log('✅ [DEBUG] Réponse API de génération de résumé (essai 2):', data);
         
         // Vérifier si la réponse contient des informations utiles
