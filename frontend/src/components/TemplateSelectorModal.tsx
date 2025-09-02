@@ -20,7 +20,7 @@ import { Client, getClients } from '../services/clientService';
 interface TemplateSelectorModalProps {
   open: boolean;
   onClose: () => void;
-  onTemplateSelect: (clientId: string | null) => void;
+  onTemplateSelect: (clientId: string | null, templateType?: 'formation' | 'default' | null) => void;
   meetingId: string;
 }
 
@@ -34,6 +34,7 @@ const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTemplateType, setSelectedTemplateType] = useState<'formation' | 'default' | null>('default');
 
   // Charger la liste des clients au montage du composant
   useEffect(() => {
@@ -62,8 +63,8 @@ const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
   };
 
   const handleConfirm = () => {
-    console.log(`Confirming template selection for meeting ${meetingId}: ${selectedClientId || 'default template'}`);
-    onTemplateSelect(selectedClientId);
+    console.log(`Confirming template selection for meeting ${meetingId}: ${selectedClientId || 'default template'} / ${selectedTemplateType}`);
+    onTemplateSelect(selectedClientId, selectedTemplateType || undefined);
     onClose();
   };
 
@@ -85,6 +86,35 @@ const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
             <Typography variant="body1" gutterBottom>
               Choisissez le template à utiliser pour générer le résumé de votre réunion.
             </Typography>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Templates intégrés</Typography>
+              <List>
+                <ListItem disablePadding>
+                  <ListItemButton onClick={() => setSelectedTemplateType('default')}>
+                    <Radio 
+                      checked={selectedTemplateType === 'default'} 
+                      onChange={() => setSelectedTemplateType('default')}
+                    />
+                    <ListItemText 
+                      primary="Par défaut" 
+                      secondary="Format standard actuel"
+                    />
+                  </ListItemButton>
+                </ListItem>
+                <ListItem disablePadding>
+                  <ListItemButton onClick={() => setSelectedTemplateType('formation')}>
+                    <Radio 
+                      checked={selectedTemplateType === 'formation'} 
+                      onChange={() => setSelectedTemplateType('formation')}
+                    />
+                    <ListItemText 
+                      primary="Formation" 
+                      secondary="Adapté aux sessions de formation"
+                    />
+                  </ListItemButton>
+                </ListItem>
+              </List>
+            </Box>
             
             <List>
               <ListItem disablePadding>
