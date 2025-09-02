@@ -45,7 +45,13 @@ def get_client_template(client_id: Optional[str] = None, user_id: Optional[str] 
         logger.error(f"Erreur lors de la récupération du template client: {str(e)}")
         return None
 
-def generate_meeting_summary(transcript_text: str, meeting_title: Optional[str] = None, client_id: Optional[str] = None, user_id: Optional[str] = None) -> Optional[str]:
+def generate_meeting_summary(
+    transcript_text: str,
+    meeting_title: Optional[str] = None,
+    client_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    template_type: Optional[str] = None,
+) -> Optional[str]:
     """
     Génère un compte rendu de réunion à partir d'une transcription en utilisant l'API Mistral.
     
@@ -70,13 +76,72 @@ def generate_meeting_summary(transcript_text: str, meeting_title: Optional[str] 
         
         title_part = f" intitulée '{meeting_title}'" if meeting_title else ""
         
-        # Utiliser le template personnalisé s'il existe, sinon utiliser le template par défaut
+        # Préparer prompts intégrés
+        formation_prompt = f"""Objectif :
+À partir d'une transcription d'une session de formation, produire un compte rendu orienté apprentissages.
+
+FORMAT EXACT ATTENDU :
+
+# 🎓 Session de formation{f" — '{meeting_title}'" if meeting_title else ''}
+
+- 👥 **Participants** : [Liste]
+- 🧑‍🏫 **Formateur** : [Nom si identifiable]
+- 🕒 **Durée estimée** : [Durée si mentionnée]
+
+---
+
+## 🧠 Objectifs pédagogiques
+- [Objectif 1]
+- [Objectif 2]
+
+---
+
+## 📌 Points clés appris
+- [Point 1]
+- [Point 2]
+
+---
+
+## 🧪 Exercices / Démonstrations
+| Exercice | Compétences visées | Résultat |
+|----------|--------------------|----------|
+| [Nom] | [Compétences] | [Résultat] |
+
+---
+
+## ❓ Questions fréquentes et réponses
+- Q: [Question]  
+  R: [Réponse]
+
+---
+
+## 🔜 Actions / Pratique recommandée
+- [Action 1]
+- [Action 2]
+
+---
+
+## 📚 Ressources
+- [Ressource 1]
+- [Ressource 2]
+
+Consigne importante: REMPLACE tous les placeholders par les informations réelles extraites de la transcription. Si une info manque, indiquer clairement "Non mentionné" sans garder de crochets.
+
+Transcription :
+
+{transcript_text}
+"""
+
+        # Utiliser le template personnalisé s'il existe, sinon utiliser un template intégré (formation) ou par défaut
         if client_template:
             # Remplacer les variables dans le template client
             prompt = client_template.replace("{transcript_text}", transcript_text)
             if meeting_title:
                 prompt = prompt.replace("{meeting_title}", meeting_title)
             logger.info("Utilisation d'un template client personnalisé")
+        elif template_type and template_type.lower() == "formation":
+            prompt = formation_prompt
+            logger.info("Utilisation du template intégré: formation")
         else:
             # Template par défaut
             prompt = f"""Objectif :
@@ -249,7 +314,13 @@ def process_meeting_summary(meeting_id: str, user_id: str, client_id: Optional[s
         
         # Générer le compte rendu avec la transcription formatée
         logger.info(f"Génération du compte rendu pour la réunion {meeting_id}")
-        summary_text = generate_meeting_summary(formatted_transcript, meeting.get("title", "Réunion"), client_id)
+        summary_text = generate_meeting_summary(
+            formatted_transcript,
+            meeting.get("title", "Réunion"),
+            client_id,
+            user_id,
+            None,
+        )
         
         if summary_text:
             # Mettre à jour la base de données avec le compte rendu
@@ -274,7 +345,12 @@ def process_meeting_summary(meeting_id: str, user_id: str, client_id: Optional[s
         return False
 
 
-async def process_meeting_summary_async(meeting_id: str, user_id: str, client_id: Optional[str] = None) -> bool:
+async def process_meeting_summary_async(
+    meeting_id: str,
+    user_id: str,
+    client_id: Optional[str] = None,
+    template_type: Optional[str] = None,
+) -> bool:
     """
     Version asynchrone sûre pour l'event loop principale: utilise les fonctions DB async
     et exécute l'appel bloquant à l'API Mistral dans un thread.
@@ -309,6 +385,7 @@ async def process_meeting_summary_async(meeting_id: str, user_id: str, client_id
             meeting.get("title", "Réunion"),
             client_id,
             user_id,
+            template_type,
         )
 
         if summary_text:
