@@ -12,6 +12,9 @@ import {
   Chip,
   Avatar,
   AvatarGroup,
+  ToggleButton,
+  ToggleButtonGroup,
+  Divider,
 } from '@mui/material';
 import { 
   Description as DescriptionIcon, 
@@ -22,6 +25,7 @@ import {
   Assignment as AssignmentIcon,
   School as SchoolIcon,
   Timeline as TimelineIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 
 // Animations sophistiquées
@@ -408,7 +412,7 @@ const TemplatesView: React.FC = () => {
         ))}
       </Box>
 
-      {/* Interface principale */}
+      {/* Interface principale (remplacée: affichage Premium) */}
       <Container
         maxWidth="md"
         sx={{
@@ -433,183 +437,51 @@ const TemplatesView: React.FC = () => {
             backdropFilter: 'blur(20px)',
             border: `1px solid ${alpha('#E2E8F0', 0.6)}`,
             boxShadow: `0 8px 32px ${alpha('#000', 0.04)}`,
-            maxWidth: 420,
+            maxWidth: 560,
             width: '100%',
             position: 'relative',
           }}
         >
-          <Stack spacing={3} alignItems="center">
-            {/* Icône du cadenas améliorée */}
-            <Box
-              sx={{
-                position: 'relative',
-                p: 3,
-                borderRadius: '50%',
-                background: `linear-gradient(135deg, 
-                  ${alpha('#F59E0B', 0.12)} 0%, 
-                  ${alpha('#EF4444', 0.08)} 50%,
-                  ${alpha('#F97316', 0.12)} 100%)`,
-                border: `2px solid ${alpha('#F59E0B', 0.2)}`,
-                boxShadow: `
-                  0 8px 32px ${alpha('#F59E0B', 0.15)},
-                  0 0 0 4px ${alpha('#F59E0B', 0.05)},
-                  inset 0 1px 0 ${alpha('#fff', 0.3)}
-                `,
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: -2,
-                  left: -2,
-                  right: -2,
-                  bottom: -2,
-                  borderRadius: '50%',
-                  background: `conic-gradient(from 0deg, 
-                    ${alpha('#F59E0B', 0.3)} 0deg,
-                    ${alpha('#EF4444', 0.2)} 90deg,
-                    ${alpha('#F97316', 0.3)} 180deg,
-                    ${alpha('#F59E0B', 0.2)} 270deg,
-                    ${alpha('#F59E0B', 0.3)} 360deg
-                  )`,
-                  zIndex: -1,
-                  animation: 'spin 8s linear infinite',
-                },
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  width: '120%',
-                  height: '120%',
-                  borderRadius: '50%',
-                  background: `radial-gradient(circle, 
-                    ${alpha('#F59E0B', 0.1)} 0%, 
-                    transparent 70%)`,
-                  transform: 'translate(-50%, -50%)',
-                  zIndex: -2,
-                  pointerEvents: 'none',
-                },
-                '@keyframes spin': {
-                  '0%': { transform: 'rotate(0deg)' },
-                  '100%': { transform: 'rotate(360deg)' },
-                },
-              }}
-            >
-              <LockIcon
-                sx={{
-                  fontSize: 36,
-                  background: `linear-gradient(135deg, #F59E0B 0%, #EF4444 50%, #F97316 100%)`,
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  filter: 'drop-shadow(0 2px 4px rgba(245, 158, 11, 0.3))',
-                  position: 'relative',
-                  zIndex: 1,
-                }}
-              />
-            </Box>
-
-            {/* Contenu principal simplifié */}
-            <Stack spacing={1} alignItems="center">
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 700,
-                  color: '#1E293B',
-                  fontSize: { xs: '1.5rem', md: '1.75rem' },
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Templates Premium
-              </Typography>
-              
-              <Typography
-                variant="body1"
-                sx={{
-                  color: '#64748B',
-                  fontWeight: 400,
-                  fontSize: '1rem',
-                  textAlign: 'center',
-                }}
-              >
-                Personnalisation avancée des comptes rendus
-              </Typography>
-            </Stack>
-
-            {/* Description épurée */}
-            <Typography
-              variant="body2"
-              sx={{
-                color: '#475569',
-                fontSize: '0.9rem',
-                lineHeight: 1.5,
-                maxWidth: 340,
-                textAlign: 'center',
-              }}
-            >
-              Créez vos propres templates adaptés à vos besoins métier 
-              et standardisez vos processus de documentation.
+          <Stack spacing={2} alignItems="center">
+            <Typography variant="h5" sx={{ fontWeight: 700, color: '#1E293B' }}>
+              Choisissez un type de template intégré
             </Typography>
-
-            {/* Zone de contact simplifiée */}
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                background: alpha('#F8FAFC', 0.8),
-                border: `1px solid ${alpha('#E2E8F0', 0.8)}`,
-                width: '100%',
-                maxWidth: 320,
-                textAlign: 'center',
-              }}
-            >
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  color: '#3B82F6',
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  mb: 0.5,
-                }}
-              >
-                Contactez Lexia France
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: '#64748B',
-                  fontSize: '0.8rem',
-                  lineHeight: 1.3,
-                }}
-              >
-                Notre équipe vous accompagne pour activer 
-                cette fonctionnalité.
-              </Typography>
-            </Box>
-
-            {/* Bouton d'action épuré */}
-            <Button
-              variant="contained"
-              sx={{
-                px: 3,
-                py: 1.2,
-                borderRadius: 2,
-                fontWeight: 600,
-                fontSize: '0.9rem',
-                background: '#3B82F6',
-                color: 'white',
-                textTransform: 'none',
-                boxShadow: `0 4px 12px ${alpha('#3B82F6', 0.2)}`,
-                '&:hover': {
-                  background: '#2563EB',
-                  transform: 'translateY(-1px)',
-                  boxShadow: `0 6px 16px ${alpha('#3B82F6', 0.25)}`,
-                },
-                transition: 'all 0.2s ease-in-out',
-              }}
-              href="mailto:mathis@lexiapro.fr?subject=Demande d'accès aux templates personnalisés Gilbert"
-            >
-              Nous contacter
-            </Button>
+            <Typography variant="body2" sx={{ color: '#64748B', mb: 1, textAlign: 'center' }}>
+              Ces templates embarqués sont disponibles immédiatement.
+            </Typography>
+            <ToggleButtonGroup exclusive aria-label="template-type" sx={{ mb: 2 }}>
+              <ToggleButton value="default" onClick={() => { try { localStorage.setItem('default_template_type', 'default'); } catch {} }}>
+                Par défaut
+              </ToggleButton>
+              <ToggleButton value="formation" onClick={() => { try { localStorage.setItem('default_template_type', 'formation'); } catch {} }}>
+                Formation
+              </ToggleButton>
+            </ToggleButtonGroup>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ width: '100%' }}>
+              <Paper variant="outlined" sx={{ flex: 1, p: 2, borderRadius: 2 }}>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <AssignmentIcon sx={{ color: '#3B82F6' }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Par défaut</Typography>
+                  <CheckCircleIcon sx={{ color: '#22C55E', ml: 'auto' }} />
+                </Stack>
+                <Typography variant="body2" sx={{ color: '#64748B', mt: 1 }}>
+                  Format standard pour tout type de réunion.
+                </Typography>
+              </Paper>
+              <Paper variant="outlined" sx={{ flex: 1, p: 2, borderRadius: 2 }}>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <SchoolIcon sx={{ color: '#06B6D4' }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Formation</Typography>
+                </Stack>
+                <Typography variant="body2" sx={{ color: '#64748B', mt: 1 }}>
+                  Compte rendu orienté apprentissages et exercices.
+                </Typography>
+              </Paper>
+            </Stack>
+            <Divider sx={{ my: 1, width: '100%' }} />
+            <Typography variant="body2" sx={{ color: '#94A3B8' }}>
+              Les templates personnalisés restent Premium.
+            </Typography>
           </Stack>
         </Paper>
       </Container>
