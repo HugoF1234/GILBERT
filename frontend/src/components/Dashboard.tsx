@@ -26,6 +26,7 @@ import {
   Select,
   FormHelperText,
   CircularProgress,
+  Backdrop,
   Chip,
   Tooltip,
   alpha,
@@ -169,6 +170,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
   const [showUploadOptions, setShowUploadOptions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadStage, setUploadStage] = useState<'preparing' | 'uploading' | 'processing' | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [showDemoDialog, setShowDemoDialog] = useState(false);
   const [meetingsList, setMeetingsList] = useState<RecentMeeting[]>([]);
@@ -839,6 +841,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
     if (!latestAudioFile || !titleInput.trim()) return;
     
     setIsUploading(true);
+    setUploadStage('preparing');
     setUploadProgress(0);
     setErrorState(null);
     
@@ -894,11 +897,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
       }
 
       console.log(`Uploading recording "${titleInput}" (${audioFile.type}, ${(audioFile.size / 1024 / 1024).toFixed(2)} MB)...`);
+      setUploadStage('uploading');
       
       // Uploader la réunion en utilisant la même logique que transcribeAudio
       const meeting = await uploadMeeting(audioFile, titleInput.trim(), {
         onProgress: (progress) => {
           setUploadProgress(progress);
+          if (progress >= 100) setUploadStage('processing');
         }
       });
       
@@ -965,6 +970,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
         setTitleInput('');
         setLatestAudioFile(null);
         setIsUploading(false);
+        setUploadStage(null);
         setUploadProgress(0);
         setErrorState(null);
         
@@ -984,6 +990,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
       
       setErrorState({ message: errorMessage });
       setIsUploading(false);
+      setUploadStage(null);
       setUploadProgress(0);
       
       // Notifier la fin de l'upload en cas d'erreur
@@ -2591,7 +2598,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
                 sx={{ borderRadius: 1 }}
               />
               <Typography variant="caption" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
-                {uploadProgress < 100 ? 'Upload et traitement en cours...' : 'Terminé !'}
+                {uploadStage === 'preparing' && 'Préparation du fichier...'}
+                {uploadStage === 'uploading' && `Envoi au serveur... ${Math.max(1, Math.min(99, Math.round(uploadProgress)))}%`}
+                {uploadStage === 'processing' && 'Traitement en cours côté serveur...'}
+                {!uploadStage && uploadProgress >= 100 && 'Terminé !'}
               </Typography>
             </Box>
           )}
