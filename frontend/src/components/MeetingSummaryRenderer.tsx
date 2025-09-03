@@ -116,7 +116,9 @@ const MeetingSummaryRenderer: React.FC<MeetingSummaryRendererProps> = ({ summary
   const lines = summaryText.split('\n');
   
   // Détecter et formater le titre principal de la réunion
-  if (lines.length > 0 && lines[0].match(/^#\s+[\p{Emoji}\p{Emoji_Presentation}\p{Emoji_Modifier_Base}\p{Emoji_Modifier}\p{Emoji_Component}]*\s*Réunion/ui)) {
+  // Remplacement du regex avec Unicode properties (\p{...}) pour compatibilité Safari/anciens navigateurs
+  // Ancien regex pouvait provoquer un crash et un écran blanc. On utilise une détection simple et robuste.
+  if (lines.length > 0 && /^#\s+/u.test(lines[0]) && /réunion/i.test(lines[0])) {
     // Extraire le titre principal
     const mainTitle = lines[0].replace(/^#\s+/, '');
     // Extraire une date au format JJ/MM/AAAA s'il est présent dans le titre
