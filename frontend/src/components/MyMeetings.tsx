@@ -731,6 +731,19 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
     }
     
     console.log(`Opening template selector for meeting ${meetingId}`);
+    // Si l'utilisateur a déjà choisi un template global (TemplatesView), l'utiliser automatiquement
+    try {
+      const pref = localStorage.getItem('default_template_type');
+      if (pref === 'formation' || pref === 'default') {
+        console.log(`Using stored template preference: ${pref}`);
+        setCurrentMeetingId(meetingId);
+        // Appeler directement la génération sans ré-ouvrir la modale
+        handleTemplateSelect(null, pref);
+        return;
+      }
+    } catch {}
+
+    // Sinon, ouvrir la modale pour choisir
     // NE PAS définir generatingSummaryId ici - seulement après sélection du template
     setCurrentMeetingId(meetingId);
     setTemplateSelectorOpen(true);
