@@ -115,10 +115,9 @@ const MeetingSummaryRenderer: React.FC<MeetingSummaryRendererProps> = ({ summary
   // Parcourir les lignes pour identifier les sections spéciales
   const lines = summaryText.split('\n');
   
-  // Détecter et formater le titre principal de la réunion
-  // Remplacement du regex avec Unicode properties (\p{...}) pour compatibilité Safari/anciens navigateurs
-  // Ancien regex pouvait provoquer un crash et un écran blanc. On utilise une détection simple et robuste.
-  if (lines.length > 0 && /^#\s+/u.test(lines[0]) && /réunion/i.test(lines[0])) {
+  // Détecter et formater un titre principal Markdown (fonctionne pour tous templates)
+  // On ne filtre pas sur un mot-clé; tout titre H1 est accepté
+  if (lines.length > 0 && /^#\s+/.test(lines[0])) {
     // Extraire le titre principal
     const mainTitle = lines[0].replace(/^#\s+/, '');
     // Extraire une date au format JJ/MM/AAAA s'il est présent dans le titre
