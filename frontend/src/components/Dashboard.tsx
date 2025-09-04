@@ -187,6 +187,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
   
   // État pour le popup d'avertissement avant l'enregistrement
   const [showRecordingWarning, setShowRecordingWarning] = useState(false);
+  const autoSummaryTriggeredRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchMeetings();
@@ -951,6 +952,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
               "Transcription terminée !",
               `La transcription de "${updatedMeeting.title || updatedMeeting.name}" est prête.`
             );
+
+            // Auto-génération de résumé selon préférence globale
+            try {
+              const pref = localStorage.getItem('default_template_type');
+              const templateType = pref === 'formation' ? 'formation' : pref === 'default' ? 'default' : null;
+              if (templateType && !autoSummaryTriggeredRef.current[meeting.id]) {
+                autoSummaryTriggeredRef.current[meeting.id] = true;
+                console.log(`Auto-generating summary for ${meeting.id} with template: ${templateType}`);
+                generateMeetingSummary(meeting.id, undefined, templateType)
+                  .then(() => console.log('Auto summary generation triggered'))
+                  .catch(err => console.warn('Auto summary generation failed:', err));
+              }
+            } catch {}
           } else if (status === 'error') {
             // Notification d'erreur
             showSuccessPopup(
@@ -1246,6 +1260,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRecordingStateChange, onU
               "Transcription terminée !",
               `La transcription de "${updatedMeeting.title || updatedMeeting.name}" est prête.`
             );
+
+            // Auto-génération de résumé selon préférence globale
+            try {
+              const pref = localStorage.getItem('default_template_type');
+              const templateType = pref === 'formation' ? 'formation' : pref === 'default' ? 'default' : null;
+              if (templateType && !autoSummaryTriggeredRef.current[meeting.id]) {
+                autoSummaryTriggeredRef.current[meeting.id] = true;
+                console.log(`Auto-generating summary for ${meeting.id} with template: ${templateType}`);
+                generateMeetingSummary(meeting.id, undefined, templateType)
+                  .then(() => console.log('Auto summary generation triggered'))
+                  .catch(err => console.warn('Auto summary generation failed:', err));
+              }
+            } catch {}
           } else if (status === 'error') {
             // Notification d'erreur
             showSuccessPopup(
