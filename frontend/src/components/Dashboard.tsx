@@ -60,6 +60,7 @@ import {
   pollTranscriptionStatus,
   watchTranscriptionStatus,
   getTranscript,
+  generateMeetingSummary,
   deleteMeeting,
   getMeetingDetails,
   syncMeetingsCache,
