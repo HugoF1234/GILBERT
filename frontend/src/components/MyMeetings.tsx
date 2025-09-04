@@ -2996,9 +2996,9 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
           setTemplateSelectorOpen(false);
         }}
         meetingId={currentMeetingId || ''}
-        onTemplateSelect={(templateId: string | null) => {
+        onTemplateSelect={(templateId: string | null, templateType?: 'formation' | 'default' | null) => {
           // Utiliser la fonction handleTemplateSelect existante
-          handleTemplateSelect(templateId);
+          handleTemplateSelect(templateId, templateType);
         }}
       />
     </>
