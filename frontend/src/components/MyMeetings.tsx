@@ -1836,7 +1836,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                       <Typography 
                         variant="h6" 
                         sx={{ 
-                          mb: 0, 
+                          mb: { xs: 0.5, sm: 0.75 }, 
                           fontWeight: 600,
                           fontSize: { xs: '1.05rem', sm: '1.2rem' },
                           lineHeight: 1.1,
