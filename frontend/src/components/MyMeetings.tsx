@@ -1512,8 +1512,9 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
           Réunions récentes
         </Typography>
 
-        {/* Barre de recherche intelligente */}
+        {/* Barre de recherche intelligente + bouton de rafraîchissement global */}
         <Box sx={{ mb: { xs: 2, sm: 3 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
           <Paper
             component="form"
             elevation={0}
@@ -1602,6 +1603,21 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
               </IconButton>
             )}
           </Paper>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={handleRefreshMeetings}
+              disabled={isRefreshing}
+              sx={{
+                height: { xs: '44px', sm: '48px' },
+                borderRadius: '30px',
+                px: { xs: 2, sm: 2.5 },
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {isRefreshing ? 'Rafraîchir…' : 'Rafraîchir'}
+            </Button>
+          </Box>
           {searchQuery && (
             <Box sx={{ 
               mt: { xs: 1, sm: 1.5 }, // Marge responsive
@@ -2063,20 +2079,6 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                         justifyContent: 'flex-end',
                         alignItems: 'center'
                       }}>
-                        {(meeting.transcript_status === 'completed' || meeting.transcription_status === 'completed') && (
-                          <Tooltip title="Mettre à jour durée et participants">
-                            <IconButton 
-                              size="small" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                invalidateCacheAndRefresh();
-                              }}
-                              disabled={isRefreshing}
-                            >
-                              <UpdateIcon fontSize="small" color={isRefreshing ? "disabled" : "action"} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
                         <IconButton 
                           size="small" 
                           sx={{ 
@@ -2097,16 +2099,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                 </Paper>
               </Grid>
             ))}
-            <Grid item xs={12}>
-              <Button
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={handleRefreshMeetings}
-                disabled={isRefreshing}
-              >
-                {isRefreshing ? 'Refreshing...' : 'Refresh Meetings'}
-              </Button>
-            </Grid>
+            
           </Grid>
             </Fade>
           )
