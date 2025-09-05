@@ -1969,24 +1969,24 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                       </Stack>
                     </Box>
 
-                    {/* Section des actions - Layout responsive */}
+                    {/* Section des actions - Layout linéaire (une seule ligne) */}
                     <Box sx={{ 
                       display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row', lg: 'row' },
-                      gap: { xs: 1, sm: 1.5 },
-                      alignItems: { xs: 'stretch', sm: 'center' },
+                      flexDirection: 'row',
+                      gap: 1.5,
+                      alignItems: 'center',
                       minWidth: { lg: 'auto' },
                       '& .MuiButton-root': {
-                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                        minHeight: { xs: '32px', sm: '36px' },
+                        fontSize: '0.875rem',
+                        minHeight: '36px',
                         whiteSpace: 'nowrap'
                       }
                     }}>
                       {/* Boutons principaux */}
                       <Stack 
-                        direction={{ xs: 'column', sm: 'row' }} 
+                        direction="row"
                         spacing={1}
-                        sx={{ flex: 1 }}
+                        sx={{ flex: 1, flexWrap: 'nowrap' }}
                       >
                         {/* Retry button */}
                         {(meeting.transcript_status === 'processing' || meeting.transcription_status === 'processing') && (
@@ -1999,7 +1999,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                             }}
                             disabled={retryingMeetingId === meeting.id}
                             size="small"
-                            sx={{ width: { xs: '100%', sm: 'auto' } }}
+                            sx={{ width: 'auto' }}
                           >
                             {retryingMeetingId === meeting.id ? 'Retry...' : 'Retry'}
                           </Button>
@@ -2014,7 +2014,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                             handleViewTranscript(meeting.id);
                           }}
                           size="small"
-                          sx={{ width: { xs: '100%', sm: 'auto' } }}
+                          sx={{ width: 'auto' }}
                         >
                           Transcription
                         </Button>
@@ -2042,7 +2042,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                             disabled={generatingSummaryId === meeting.id || meeting.summary_status === 'processing'}
                             size="small"
                             sx={{ 
-                              width: { xs: '100%', sm: 'auto' },
+                              width: 'auto',
                               minWidth: { sm: '120px' } 
                             }}
                           >
@@ -2056,12 +2056,27 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                         )}
                       </Stack>
 
-                      {/* Actions secondaires */}
+                      {/* Actions secondaires (toujours en ligne) */}
                       <Box sx={{ 
                         display: 'flex',
                         gap: 0.5,
-                        justifyContent: { xs: 'flex-end', sm: 'center' }
+                        justifyContent: 'flex-end',
+                        alignItems: 'center'
                       }}>
+                        {(meeting.transcript_status === 'completed' || meeting.transcription_status === 'completed') && (
+                          <Tooltip title="Mettre à jour durée et participants">
+                            <IconButton 
+                              size="small" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                invalidateCacheAndRefresh();
+                              }}
+                              disabled={isRefreshing}
+                            >
+                              <UpdateIcon fontSize="small" color={isRefreshing ? "disabled" : "action"} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         <IconButton 
                           size="small" 
                           sx={{ 
@@ -2079,23 +2094,6 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                       </Box>
                     </Box>
                   </Box>
-                  {/* Bouton pour mettre à jour les métadonnées - ajouté directement dans la ligne des actions */}
-                  {(meeting.transcript_status === 'completed' || meeting.transcription_status === 'completed') && (
-                    <Box display="flex" justifyContent="flex-end" mt={1}>
-                      <Tooltip title="Mettre à jour durée et participants">
-                        <IconButton 
-                          size="small" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            invalidateCacheAndRefresh();
-                          }}
-                          disabled={isRefreshing}
-                        >
-                          <UpdateIcon fontSize="small" color={isRefreshing ? "disabled" : "action"} />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  )}
                 </Paper>
               </Grid>
             ))}
