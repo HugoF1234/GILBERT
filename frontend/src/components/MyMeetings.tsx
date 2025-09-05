@@ -1605,8 +1605,8 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
           </Paper>
             <Button
               variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={handleRefreshMeetings}
+              startIcon={isRefreshing ? <CircularProgress size={16} /> : <RefreshIcon />}
+              onClick={invalidateCacheAndRefresh}
               disabled={isRefreshing}
               sx={{
                 height: { xs: '44px', sm: '48px' },
@@ -1615,7 +1615,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                 whiteSpace: 'nowrap'
               }}
             >
-              {isRefreshing ? 'Rafraîchir…' : 'Rafraîchir'}
+              {isRefreshing ? 'Rafraîchissement…' : 'Rafraîchir'}
             </Button>
           </Box>
           {searchQuery && (
@@ -1823,23 +1823,23 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                   }}
                   onClick={() => handleMeetingClick(meeting.id)}
                 >
-                  {/* Layout responsive */}
+                  {/* Layout responsive avec baseline alignée */}
                   <Box sx={{ 
                     display: 'flex', 
                     flexDirection: { xs: 'column', lg: 'row' },
-                    gap: { xs: 2, lg: 0 },
-                    justifyContent: { lg: 'space-between' }, 
-                    alignItems: { xs: 'stretch', lg: 'center' } 
+                    gap: { xs: 2, lg: 2 },
+                    justifyContent: 'space-between', 
+                    alignItems: 'center'
                   }}>
                     {/* Contenu principal */}
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography 
                         variant="h6" 
                         sx={{ 
-                          mb: { xs: 1.5, sm: 1 }, 
+                          mb: 0, 
                           fontWeight: 600,
-                          fontSize: { xs: '1.1rem', sm: '1.25rem' },
-                          lineHeight: 1.3,
+                          fontSize: { xs: '1.05rem', sm: '1.2rem' },
+                          lineHeight: 1.1,
                           overflow: { xs: 'hidden', lg: 'visible' },
                           textOverflow: { xs: 'ellipsis', lg: 'clip' },
                           whiteSpace: { xs: 'nowrap', lg: 'normal' }
@@ -1851,10 +1851,10 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                       {/* Informations de la réunion */}
                       <Stack 
                         direction={{ xs: 'column', sm: 'row' }} 
-                        spacing={{ xs: 1, sm: 2 }} 
-                        alignItems={{ xs: 'flex-start', sm: 'center' }} 
+                        spacing={{ xs: 1, sm: 1.5 }} 
+                        alignItems="center"
                         flexWrap="wrap"
-                        sx={{ mb: { xs: 2, lg: 0 } }}
+                        sx={{ mb: 0 }}
                       >
                         {/* Durée */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -1875,7 +1875,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                           <Typography 
                             variant="body2" 
                             color="text.secondary" 
-                            sx={{ fontWeight: 500, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                            sx={{ fontWeight: 500, fontSize: { xs: '0.82rem', sm: '0.9rem' }, lineHeight: 1 }}
                           >
                             {(meeting.transcript_status === 'processing' || meeting.transcription_status === 'processing') 
                               ? 'Analyse...' 
@@ -1901,7 +1901,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                           <Typography 
                             variant="body2" 
                             color="text.secondary" 
-                            sx={{ fontWeight: 500, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                            sx={{ fontWeight: 500, fontSize: { xs: '0.82rem', sm: '0.9rem' }, lineHeight: 1 }}
                           >
                             {formatDate(meeting.created_at)}
                           </Typography>
@@ -1925,7 +1925,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                           <Typography 
                             variant="body2" 
                             color="text.secondary" 
-                            sx={{ fontWeight: 500, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                            sx={{ fontWeight: 500, fontSize: { xs: '0.82rem', sm: '0.9rem' }, lineHeight: 1 }}
                           >
                             {(meeting.transcript_status === 'processing' || meeting.transcription_status === 'processing')
                               ? 'Détection...'
@@ -1978,7 +1978,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                                   : '#F59E0B',
                               fontWeight: 500,
                               fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                              height: { xs: 20, sm: 24 }
+                              height: 24
                             }}
                           />
                         </Box>
