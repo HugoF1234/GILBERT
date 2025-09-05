@@ -133,6 +133,8 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
   // Ajout des refs pour gérer le nettoyage des timers
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isComponentMounted = useRef(true);
+  // Watchers pour les résumés en cours
+  const summaryWatchersRef = useRef<Record<string, () => void>>({});
   
   // Cache intelligent pour éviter les appels répétés
   const lastFetchRef = useRef<number>(0);
@@ -847,8 +849,25 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
         }
       };
       
-      // Démarrer le polling
+      // Démarrer le polling + watcher API pour basculer automatiquement à "Voir résumé"
       pollSummaryStatus();
+      try {
+        if (summaryWatchersRef.current[meetingId]) {
+          summaryWatchersRef.current[meetingId]!();
+        }
+        const stop = watchSummaryStatus(meetingId, (status, updated) => {
+          if (!isComponentMounted.current) return;
+          setMeetings(prev => prev.map(m => (m.id === meetingId ? { ...m, ...updated } : m)));
+          if (status === 'completed' || status === 'error') {
+            setGeneratingSummaryId(null);
+            setGeneratingSummaryInStorage(null);
+            if (summaryWatchersRef.current[meetingId]) delete summaryWatchersRef.current[meetingId];
+          }
+        });
+        summaryWatchersRef.current[meetingId] = stop;
+      } catch (e) {
+        console.warn('Could not start summary watcher:', e);
+      }
       
     } catch (err) {
       console.error('Failed to generate summary:', err);
@@ -1836,7 +1855,7 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                       <Typography 
                         variant="h6" 
                         sx={{ 
-                          mb: { xs: 0.5, sm: 0.75 }, 
+                          mb: { xs: 1, sm: 1.25 }, 
                           fontWeight: 600,
                           fontSize: { xs: '1.05rem', sm: '1.2rem' },
                           lineHeight: 1.1,
@@ -2036,16 +2055,15 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                         </Button>
                         
                         {/* Generate Summary button */}
-                        {(meeting.transcript_status === 'completed' || meeting.transcription_status === 'completed') && (
+                        {/* Bouton compte rendu: taille fixe selon l'état pour éviter le décalage */}
+                        {meeting.transcript_status === 'completed' || meeting.transcription_status === 'completed' ? (
                           <Button
                             variant={meeting.summary_status === 'completed' ? "contained" : "outlined"}
                             color="primary"
                             startIcon={
                               meeting.summary_status === 'processing' 
                                 ? <CircularProgress size={16} color="inherit" />
-                                : meeting.summary_status === 'completed'
-                                  ? <SummarizeIcon />
-                                  : <EventNoteIcon />
+                                : <SummarizeIcon />
                             }
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2055,21 +2073,21 @@ const MyMeetings: React.FC<MyMeetingsProps> = ({ user: _user, isMobile: _isMobil
                                 handleGenerateSummary(meeting.id);
                               }
                             }}
-                            disabled={generatingSummaryId === meeting.id || meeting.summary_status === 'processing'}
+                            disabled={generatingSummaryId === meeting.id}
                             size="small"
                             sx={{ 
                               width: 'auto',
-                              minWidth: { sm: '120px' } 
+                              minWidth: 180
                             }}
                           >
                             {meeting.summary_status === 'processing'
-                              ? 'En cours...'
+                              ? 'En cours…'
                               : meeting.summary_status === 'completed'
                                 ? 'Voir résumé'
-                                : 'Résumé'
+                                : 'Générer le résumé'
                             }
                           </Button>
-                        )}
+                        ) : null}
                       </Stack>
 
                       {/* Actions secondaires (toujours en ligne) */}
